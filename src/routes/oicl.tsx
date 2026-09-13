@@ -1,12 +1,12 @@
 import { Title } from '@solidjs/meta';
-import Counter from '../components/Counter';
-import logo from '../logo.svg';
+import OiclControlSurface from '../components/OiclControlSurface/OiclControlSurface';
 
 export default function Home() {
   return (
     <main>
-      <Title>OICL - Webcomponents Demo</Title>
-      -- TBD! --
+      <Title>OICL - Webcomponents PoC</Title>
+      Component below:
+      <OiclControlSurface />
     </main>
   );
 }

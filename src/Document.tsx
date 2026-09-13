@@ -10,7 +10,7 @@ import { HydrationScript } from '@solidjs/web';
 // needed. Delete this file to fall back to the plugin's built-in shell.
 export default function Document(props: ParentProps) {
   return (
-    <html lang="en">
+    <html lang="en" data-obc-theme="day">
       <head>
         <meta charset="utf-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -18,7 +18,7 @@ export default function Document(props: ParentProps) {
         <title>Solid App</title>
         <HydrationScript />
       </head>
-      <body>{props.children}</body>
+      <body class="obc-component-size-regular">{props.children}</body>
     </html>
   );
 }
