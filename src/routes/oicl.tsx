@@ -6,7 +6,7 @@ export default function Home() {
     <main>
       <Title>OICL - Webcomponents PoC</Title>
       Component below:
-      <OiclControlSurface />
+      <OiclControlSurface title='Oicl COntrol Surface' onButtonClick={() => console.log("!")}/>
     </main>
   );
 }

@@ -3,10 +3,24 @@
   "version": "0.0.0",
   "description": "",
   "type": "module",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    "./custom-elements": {
+      "types": "./dist/custom-elements/index.d.ts",
+      "import": "./dist/custom-elements/index.js"
+    },
+    "./custom-elements/*": {
+      "types": "./dist/custom-elements/*.d.ts",
+      "import": "./dist/custom-elements/*.js"
+    }
+  },
   "scripts": {
     "start": "vite",
     "dev": "vite",
     "build": "vite build",
+    "build:custom-elements": "vite build --config vite.custom-elements.config.ts",
     "serve": "vite preview",
     "test": "vitest",
     "lint": "oxlint src"
@@ -17,6 +31,7 @@
     "@solidjs/testing-library": "^1.0.0-beta.3",
     "@solidjs/vite-plugin": "^3.0.0-next.38",
     "@testing-library/jest-dom": "^7.0.0",
+    "@types/node": "^24.0.0",
     "eslint-plugin-solid": "~0.18.0",
     "filesystem-routing": "0.2.1",
     "jsdom": "^25.0.1",

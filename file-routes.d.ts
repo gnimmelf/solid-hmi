@@ -33,12 +33,6 @@ declare module "virtual:file-routes" {
   /** The flat route manifest, in scan order. */
   const routes: readonly [
     {
-      path: "/*404";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
-      $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
-    },
-    {
       path: "/";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/index")>;
@@ -55,6 +49,12 @@ declare module "virtual:file-routes" {
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/users")>;
       $$route?: undefined;
+    },
+    {
+      path: "/*404";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
+      $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
     },
     {
       path: "/users/:id";
@@ -76,19 +76,19 @@ declare module "virtual:file-routes" {
       children?: undefined;
     },
     {
-      path: "/*404";
-      id: "/*404";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
-      $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
-      children?: undefined;
-    },
-    {
       path: "/oicl";
       id: "/oicl";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/oicl")>;
       $$route?: undefined;
+      children?: undefined;
+    },
+    {
+      path: "/*404";
+      id: "/*404";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
+      $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
       children?: undefined;
     },
     {

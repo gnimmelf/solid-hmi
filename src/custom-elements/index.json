@@ -1,0 +1,8 @@
+[
+  {
+    "tag": "oicl-control-surface",
+    "source": "../components/OiclControlSurface/OiclControlSurface.tsx",
+    "props": ["title"],
+    "events": ["button-click"]
+  }
+]
