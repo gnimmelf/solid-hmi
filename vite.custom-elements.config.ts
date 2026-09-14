@@ -180,18 +180,7 @@ function createTestPage(
 
 function createDriverPage() {
   const links = definitions
-    .map((definition) => `      <li><a href="./${definition.tag}/">${definition.tag}</a></li>`)
-    .join('\n');
-  const elements = definitions
-    .map((definition) => {
-      const attributes = (definition.props ?? [])
-        .map((prop) => ` ${prop}="${prop === 'title' ? `${definition.tag} test` : ''}"`)
-        .join('');
-      return `    <section><h2>${definition.tag}</h2><${definition.tag}${attributes}></${definition.tag}></section>`;
-    })
-    .join('\n');
-  const imports = definitions
-    .map((definition) => `      import '../${definition.tag}.js';`)
+    .map((definition) => `      <li><a href="./${definition.tag}/index.html">${definition.tag}</a></li>`)
     .join('\n');
 
   return `<!doctype html>
@@ -208,10 +197,6 @@ function createDriverPage() {
     <nav><ul>
 ${links}
     </ul></nav>
-${elements}
-    <script type="module">
-${imports}
-    </script>
   </body>
 </html>
 `;
