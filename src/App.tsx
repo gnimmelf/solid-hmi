@@ -12,10 +12,10 @@ export default function App() {
     <Router>
       {(props) => (
         <>
-          <Title>Solid App</Title>
+          <Title>Solid OpenBridge demo</Title>
           <nav>
             <a href={paths()}>Home</a>
-            <a href={paths.oicl()}>OICL</a>
+            <a href={paths.components()}>Components</a>
           </nav>
           <Loading fallback={<main>Loading…</main>}>{props.children}</Loading>
         </>

@@ -20,6 +20,9 @@ importers:
       '@solidjs/web':
         specifier: ^2.0.0-rc.6
         version: 2.0.0-rc.6(solid-js@2.0.0-rc.6)
+      marked:
+        specifier: ^18.0.13
+        version: 18.0.13
       solid-js:
         specifier: ^2.0.0-rc.6
         version: 2.0.0-rc.6
@@ -1399,6 +1402,11 @@ packages:
 
   magic-string@1.2.3:
     resolution: {integrity: sha512-Bpb0W2TbLKOZ7vJnOUnVRGq3WL2p+ISV29M6hYPL1AFCpyKZpdr5ytiXoTSSxRVhg8YW7f65+6gbG8WG6PCa/g==}
+
+  marked@18.0.13:
+    resolution: {integrity: sha512-xTxVzZsBFwunP6HDmtBkabUQEYArnP7/rMDGmPj9SlrKlQ4i8MdYVow+nJL0eOqwpUqhzBoTBRADGN6uYwPyOw==}
+    engines: {node: '>= 20'}
+    hasBin: true
 
   math-intrinsics@1.1.0:
     resolution: {integrity: sha512-/IXtbwEk5HTPyEwyKX6hGkYXxM9nbj64B+ilVJnC/R6B0pH5G4V3b0pVbL7DBj4tkhBAppbQUlf6F6Xl9LHu1g==}
@@ -3044,6 +3052,8 @@ snapshots:
   magic-string@1.2.3:
     dependencies:
       '@jridgewell/sourcemap-codec': 1.6.0
+
+  marked@18.0.13: {}
 
   math-intrinsics@1.1.0: {}
 

@@ -1,22 +1,13 @@
-import { Title } from '@solidjs/meta';
-import logo from '../logo.svg';
+import { marked } from 'marked';
+import readme from '../../README.md?raw';
+
+const readmeHtml = marked.parse(readme) as string;
 
 export default function Home() {
   return (
     <main>
-      <Title>Home - Solid App</Title>
-      <img src={logo} class="logo" alt="Solid logo" />
-      <h1>Hello Solid!</h1>
-      <p>
-        Edit <code>src/routes/index.tsx</code> and save to reload.
-      </p>
-      <a
-        href="https://v2.solidjs.com/"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        Learn Solid
-      </a>
+      {/* oxlint-disable-next-line solid/no-innerhtml -- README.md is bundled from this repository. */}
+      <article class="readme" innerHTML={readmeHtml} />
     </main>
   );
 }

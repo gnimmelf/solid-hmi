@@ -1,76 +1,171 @@
-## Solid `basic` template
+# Solid HMI + OpenBridge
 
-`bare` plus the app floors most projects want: `@solidjs/router` with file-system routes, per-page titles via `@solidjs/meta`, and a `vitest` test suite.
+This repository is a proof of concept and a working demo for building heavier HMI (human-machine interface) components with [SolidJS](https://www.solidjs.com/) and the [OpenBridge design system](https://openbridge.no/).
 
-**Deployment contract:** still zero server dependencies — `vite build` emits a purely static site; deploy `dist/client` to any static host.
+The focus is the boundary between a productive component model and an interoperable browser API: build rich, reactive HMI surfaces in Solid, then publish them as standards-based custom elements that can be consumed by other web applications and host environments.
 
-## How it works
+## What this PoC demonstrates
 
-There is no `index.html` and no mount file. `@solidjs/vite-plugin`'s turnkey mode (`start: true` in `vite.config.ts`) generates the entries around two conventions:
+- OpenBridge styling, design tokens, and web components inside a SolidJS application.
+- A Solid component with a small HMI-oriented API, currently `OiclControlSurface`.
+- A generated custom-element build that exposes the component as `<oicl-control-surface>`.
+- Attribute-to-prop mapping for host-controlled values such as `title`.
+- DOM event forwarding through a bubbling, composed `button-click` `CustomEvent`.
+- Generated TypeScript declarations and small browser test pages for each registered custom element.
 
-- **`src/App.tsx`** — the app, router included. The `<Router>` wraps a shared nav and a `<Loading>` boundary; its routes come from the file system (below).
-- **`src/Document.tsx`** — the document shell, the new `index.html`. Site-wide head tags go here; it is compiled only into the prerendered static shell and adds **zero client-side JS**. Per-page head tags (`<Title>` from `@solidjs/meta`) live in the route modules.
+This is intentionally exploratory. It is meant to make the integration approach tangible and provide a place to test the ergonomics, packaging, and runtime behavior needed by more substantial HMI controls. It is not a production-ready component library or a complete OpenBridge implementation.
 
-## File-system routing
+## Why SolidJS and custom elements?
 
-The `fileRoutes()` plugin (from `filesystem-routing/vite`) scans `src/routes` and exposes the result as the `virtual:file-routes` module, which `@solidjs/router/fs` turns into router routes inside `src/App.tsx`. You edit files under `src/routes`; the route table follows:
+Heavier HMI components often need local state, frequent updates, predictable rendering, and a clear public contract. SolidJS provides fine-grained reactivity for the component implementation. Custom elements provide the integration contract: a host does not need to adopt SolidJS in order to place the control in a page, listen for its events, or style it with the OpenBridge vocabulary.
 
-- `index.tsx` is `/`, `users/[id].tsx` is `/users/:id`, `[...404].tsx` catches everything else.
-- Pairing `users.tsx` with the `users/` directory makes it a layout wrapping every page inside.
-- A module is a page when it has a **default export** (a file without one is not a route), and may export a `route` config object — `src/routes/users/[id].tsx` uses `preload` to start its data fetch as navigation begins.
+That separation lets this PoC explore a useful division of responsibility:
 
-Every route is code-split automatically; navigating loads only that page's module.
+- **SolidJS** owns component composition, state, and reactive behavior.
+- **OpenBridge** owns the visual language and reusable design-system primitives.
+- **Custom elements** own the host-facing API and browser interoperability.
+- **The build adapter** packages the result and generates declarations and demo pages.
 
-## Data loading
+## Project shape
 
-`src/routes/users/[id].tsx` shows the data pattern: a `query()` (from `@solidjs/router`) over a plain `fetch`, read through a memo. The surrounding `<Loading>` boundary in `App.tsx` shows its fallback until the promise settles, and `query()` caches by key so preload and render share one request. Swap the static `/users.json` for any API endpoint.
-
-## Testing
-
-`vitest` runs component tests in jsdom via `@solidjs/testing-library` — add `*.test.tsx` files next to what they test. See `src/components/Counter.test.tsx` for the pattern; note Solid 2.0 batches DOM updates, so tests call `flush()` after firing events before asserting on the DOM.
-
-## Usage
-
-Those templates dependencies are maintained via [pnpm](https://pnpm.io) via `pnpm up -Lri`.
-
-This is the reason you see a `pnpm-lock.yaml`. That being said, any package manager will work. This file can be safely be removed once you clone a template.
-
-```bash
-$ npm install # or pnpm install or yarn install
+```text
+src/
+	components/OiclControlSurface/              Solid implementation using OpenBridge
+	custom-elements/index.json                  Registry of published custom elements
+	custom-elements/solid-custom-element.tsx    Solid-to-custom-element adapter
+	routes/                                     Demo application routes
+vite.custom-elements.config.ts                  Custom-element bundling and docs generation
 ```
 
-### Learn more on the [Solid Website](https://solidjs.com) and come chat with us on our [Discord](https://discord.com/invite/solidjs)
+The registry currently contains:
 
-## Available Scripts
+```html
+<oicl-control-surface title="Control surface"></oicl-control-surface>
+```
 
-In the project directory, you can run:
+The element dispatches `button-click` when its OpenBridge button is activated:
 
-### `npm run dev` or `npm start`
+```js
+const surface = document.querySelector('oicl-control-surface');
 
-Runs the app in the development mode.<br>
-Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
+surface.addEventListener('button-click', () => {
+	console.log('Control surface activated');
+});
+```
 
-The page will reload if you make edits.<br>
+## Run the demo
 
-### `npm run build`
+Requirements: Node.js with `pnpm` available.
 
-Builds the static production site to `dist/client`, routes code-split.
+```bash
+pnpm install
+pnpm dev
+```
 
-### `npm run serve`
+Open the Vite URL shown in the terminal and use the **Components** route to view the SolidJS demo.
 
-Serves the production build locally.
+## Build the custom elements
 
-### `npm test`
+```bash
+pnpm build:custom-elements
+```
 
-Runs the test suite.
+This writes distributable modules and declarations to `dist/custom-elements/`, including generated browser documentation pages. The package exports the custom-element bundle through the package `exports` map.
 
-## The `ssr` flip
+## Type exports for consumers
 
-Streaming SSR is one boolean: add `ssr: true` next to `start: true` in `vite.config.ts`. `src/App.tsx`, `src/Document.tsx`, and the routes carry over unchanged — `<HydrationScript />` is already in place in the Document (in client mode it is stripped from the static shell).
+The custom-element build generates TypeScript declarations for each element and exports them alongside the runtime bundle. Replace `example-basic` below with the package name used when this PoC is published:
 
-## Growing out of `basic`
+```ts
+import type { OiclControlSurfaceElement } from 'example-basic/custom-elements';
+import 'example-basic/custom-elements';
 
-- **A server** (data loading via server functions, mutations, sessions, API routes) is the `fullstack` template — same structure, more floors.
-- Want less? The `bare` template is the same shape without the router.
+const surface = document.querySelector('oicl-control-surface') as OiclControlSurfaceElement;
+surface.title = 'Control surface';
+surface.addEventListener('button-click', () => {
+	console.log('Control surface activated');
+});
+```
 
-## This project was created with the [Solid CLI](https://github.com/solidjs-community/solid-cli)
+The declarations also register `oicl-control-surface` in `HTMLElementTagNameMap`, so DOM APIs and framework adapters can use the element's typed `title` property. The runtime import is still required to register the browser custom element.
+
+### React
+
+React can render the custom element directly. The generated element type is useful when accessing it through a ref; add a local JSX declaration if the React version or JSX configuration does not already accept custom-element tags:
+
+```tsx
+import { useRef } from 'react';
+import 'example-basic/custom-elements';
+
+declare module 'react' {
+	namespace JSX {
+		interface IntrinsicElements {
+			'oicl-control-surface': React.DetailedHTMLProps<
+				React.HTMLAttributes<OiclControlSurfaceElement>,
+				OiclControlSurfaceElement
+			> & { title?: string };
+		}
+	}
+}
+
+import type { OiclControlSurfaceElement } from 'example-basic/custom-elements';
+
+export function ControlSurface() {
+	const ref = useRef<OiclControlSurfaceElement>(null);
+
+	return <oicl-control-surface ref={ref} title="Control surface" />;
+}
+```
+
+For custom DOM events, attach the listener through a ref or an effect and listen for `button-click` with `addEventListener`.
+
+### Angular
+
+Angular applications can use the element with `CUSTOM_ELEMENTS_SCHEMA`. Import the generated bundle once, then import the generated element type wherever a typed reference is useful:
+
+```ts
+import { CUSTOM_ELEMENTS_SCHEMA, Component } from '@angular/core';
+import type { OiclControlSurfaceElement } from 'example-basic/custom-elements';
+import 'example-basic/custom-elements';
+
+@Component({
+	selector: 'app-control-surface',
+	template: '<oicl-control-surface title="Control surface"></oicl-control-surface>',
+	schemas: [CUSTOM_ELEMENTS_SCHEMA],
+})
+export class ControlSurfaceComponent {
+	readonly elementType?: OiclControlSurfaceElement;
+}
+```
+
+Angular event bindings can listen for the custom event with `(button-click)`. The generated declarations provide the element and event types to TypeScript consumers, while the custom-element runtime remains framework-independent.
+
+Useful checks:
+
+```bash
+pnpm lint
+pnpm test
+pnpm build
+```
+
+## PoC direction
+
+The next useful experiments are less about adding isolated widgets and more about proving the host contract for realistic HMI surfaces:
+
+- Define stable property, attribute, and event conventions for controls.
+- Exercise lifecycle behavior when elements are added, moved, or removed by a host application.
+- Separate presentation from control state and investigate controlled versus internally managed values.
+- Validate keyboard, focus, disabled, alarm, and status behavior against OpenBridge guidance.
+- Measure update behavior as controls become more complex and data-driven.
+- Test consumption from plain HTML and from other frameworks.
+- Decide how themes, CSS isolation, assets, and versioning should work in a distributable library.
+
+These experiments should inform the public API before the project is treated as a reusable component package.
+
+## Status and scope
+
+This project is a demo scaffold, not a finished HMI toolkit. APIs, generated output, naming, and build details may change while the integration model is being evaluated. The current control surface is deliberately small so that the important boundary between SolidJS, OpenBridge, and the browser custom-element API remains easy to inspect.
+
+## License
+
+MIT
