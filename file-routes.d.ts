@@ -33,12 +33,6 @@ declare module "virtual:file-routes" {
   /** The flat route manifest, in scan order. */
   const routes: readonly [
     {
-      path: "/components";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components")>;
-      $$route?: undefined;
-    },
-    {
       path: "/";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/index")>;
@@ -49,6 +43,18 @@ declare module "virtual:file-routes" {
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
       $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
+    },
+    {
+      path: "/components/";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/index")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/components/oicl-control-surface";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
+      $$route?: undefined;
     }
   ];
   export default routes;
@@ -72,10 +78,18 @@ declare module "virtual:file-routes" {
       children?: undefined;
     },
     {
-      path: "/components";
-      id: "/components";
+      path: "/components/";
+      id: "/components/";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/index")>;
+      $$route?: undefined;
+      children?: undefined;
+    },
+    {
+      path: "/components/oicl-control-surface";
+      id: "/components/oicl-control-surface";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
       $$route?: undefined;
       children?: undefined;
     }
