@@ -72,6 +72,14 @@ pnpm build:custom-elements
 
 This writes distributable modules and declarations to `dist/custom-elements/`, including generated browser documentation pages. The package exports the custom-element bundle through the package `exports` map.
 
+### Browse the docs
+
+Start a static webserver with root at `dist`, so the generated docs and bundled custom elements are both reachable.
+
+```
+pnpm run serve:docs
+```
+
 ## Type exports for consumers
 
 The custom-element build generates TypeScript declarations for each element and exports them alongside the runtime bundle. Replace `example-basic` below with the package name used when this PoC is published:

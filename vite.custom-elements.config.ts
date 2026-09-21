@@ -13,38 +13,22 @@ type CustomElementDefinition = {
 const projectRoot = process.cwd();
 const indexPath = resolve(projectRoot, 'src/custom-elements/index.json');
 const outputDirectory = resolve(projectRoot, 'dist/custom-elements');
+const docsDirectory = resolve(projectRoot, 'dist/docs');
 const definitions = JSON.parse(
   readFileSync(indexPath, 'utf8'),
 ) as CustomElementDefinition[];
 
-function inlineOpenBridgeCss(): Plugin {
-  const stylesheet = '@oicl/openbridge-webcomponents/dist/openbridge.css';
-  const virtualId = '\0inline-openbridge-css';
+function copyOpenBridgeCss(): Plugin {
+  const stylesheet = resolve(
+    projectRoot,
+    'node_modules/@oicl/openbridge-webcomponents/dist/openbridge.css',
+  );
 
   return {
-    name: 'inline-openbridge-css',
-    enforce: 'pre',
-    resolveId(id) {
-      return id === stylesheet ? virtualId : undefined;
-    },
-    load(id) {
-      if (id !== virtualId) {
-        return undefined;
-      }
-
-      const cssPath = resolve(
-        projectRoot,
-        'node_modules/@oicl/openbridge-webcomponents/dist/openbridge.css',
-      );
-      const css = JSON.stringify(readFileSync(cssPath, 'utf8'));
-      return `
-        if (typeof document !== 'undefined' && !document.querySelector('style[data-openbridge-global]')) {
-          const style = document.createElement('style');
-          style.dataset.openbridgeGlobal = '';
-          style.textContent = ${css};
-          document.head.append(style);
-        }
-      `;
+    name: 'copy-openbridge-css',
+    closeBundle() {
+      mkdirSync(docsDirectory, { recursive: true });
+      writeFileSync(join(docsDirectory, 'openbridge.css'), readFileSync(stylesheet, 'utf8'));
     },
   };
 }
@@ -88,7 +72,6 @@ function customElementEntries(): Plugin {
     },
     closeBundle() {
       mkdirSync(outputDirectory, { recursive: true });
-      const docsDirectory = join(outputDirectory, 'docs');
       mkdirSync(docsDirectory, { recursive: true });
 
       for (const definition of definitions) {
@@ -119,9 +102,9 @@ function customElementEntries(): Plugin {
         mkdirSync(exportDirectory, { recursive: true });
         writeFileSync(
           join(exportDirectory, 'index.html'),
-          createTestPage(definition, {
-            cssPath: '../../../node_modules/@oicl/openbridge-webcomponents/dist/openbridge.css',
-            modulePath: `../../${definition.tag}.js`,
+          createCutomeElementDriverPage(definition, {
+            cssPath: '../openbridge.css',
+            modulePath: `../../custom-elements/${definition.tag}.js`,
           }),
         );
       }
@@ -135,12 +118,12 @@ function customElementEntries(): Plugin {
         .map((definition) => `import './${definition.tag}.js';`)
         .join('\n');
       writeFileSync(join(outputDirectory, 'index.js'), `${indexModule}\n`);
-      writeFileSync(join(docsDirectory, 'index.html'), createDriverPage());
+      writeFileSync(join(docsDirectory, 'index.html'), createDocsIndexPage());
     },
   };
 }
 
-function createTestPage(
+function createCutomeElementDriverPage(
   definition: CustomElementDefinition,
   paths: { cssPath: string; modulePath: string },
 ) {
@@ -155,7 +138,7 @@ function createTestPage(
     .join('\n      ');
 
   return `<!doctype html>
-<html lang="en">
+<html lang="en" data-obc-theme="night">
   <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -178,9 +161,9 @@ function createTestPage(
 `;
 }
 
-function createDriverPage() {
+function createDocsIndexPage() {
   const links = definitions
-    .map((definition) => `      <li><a href="./${definition.tag}/index.html">${definition.tag}</a></li>`)
+    .map((definition) => `      <li><a href="./docs/${definition.tag}/index.html">${definition.tag}</a></li>`)
     .join('\n');
 
   return `<!doctype html>
@@ -189,7 +172,7 @@ function createDriverPage() {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Custom elements</title>
-    <link rel="stylesheet" href="../../node_modules/@oicl/openbridge-webcomponents/dist/openbridge.css">
+    <link rel="stylesheet" href="./openbridge.css">
     <style>body { margin: 2rem; font-family: sans-serif; } section { margin-bottom: 2rem; }</style>
   </head>
   <body>
@@ -212,7 +195,7 @@ function toTypeName(tag: string) {
 export default defineConfig({
   publicDir: false,
   plugins: [
-    inlineOpenBridgeCss(),
+    copyOpenBridgeCss(),
     solid({
       compiler: 'babel',
       ssr: false,
