@@ -9,11 +9,15 @@
 import type { JSX as SolidJSX } from '@solidjs/web';
 import type { ObcCard } from '@oicl/openbridge-webcomponents/dist/components/card/card.js';
 import type { ObcButton } from '@oicl/openbridge-webcomponents/dist/components/button/button.js';
+import type { ObcIconButton } from '@oicl/openbridge-webcomponents/dist/components/icon-button/icon-button.js';
+import type { ObiPaletteDimming } from '@oicl/openbridge-webcomponents/dist/icons/icon-palette-dimming.js';
 
 /** Register every OICL custom element used in .tsx files here. */
 interface OiclComponents {
   'obc-card': ObcCard;
   'obc-button': ObcButton;
+  'obc-icon-button': ObcIconButton;
+  'obi-palette-dimming': ObiPaletteDimming;
 }
 
 /** Boolean/string Lit properties can also be set as plain lowercase HTML attributes. */

@@ -1,4 +1,33 @@
-nav {
+:root {
+  --gap: 1rem;
+  color-scheme: light;
+  background: var(--container-backdrop-color);
+  color: var(--element-active-color);  
+}
+
+:root[data-obc-theme="dusk"],
+:root[data-obc-theme="night"] {
+  color-scheme: dark;
+}
+
+a {
+  color: var(--element-active-color); 
+}
+
+section.top-bar ,nav {
   display: flex;
-  gap: 10px;
+  gap: var(--gap);  
+  align-items: center;
+}
+
+section.top-bar {
+  justify-content: space-between ;
+  padding-top: var(--gap);
+  padding-bottom: var(--gap);
+}
+
+body {
+  margin: var(--gap);
+  background: var(--container-backdrop-color);
+  color: var(--element-active-color);
 }
