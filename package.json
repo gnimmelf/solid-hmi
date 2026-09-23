@@ -17,12 +17,10 @@
     }
   },
   "scripts": {
-    "start": "vite",
     "dev": "vite",
     "build": "vite build",
-    "build:custom-elements": "vite build --config vite.custom-elements.config.ts",
-    "serve:docs": "pnpx static-server dist -o -i docs/index.html",
-    "docs:serve": "pnpx static-server dist -o -i docs/index.html",
+    "build:exports": "vite build --config vite.custom-elements.config.ts",
+    "serve:exports": "pnpx static-server dist -o -i docs/index.html",
     "serve": "vite preview",
     "test": "vitest",
     "lint": "oxlint src"
