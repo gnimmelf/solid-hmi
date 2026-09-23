@@ -1,7 +1,7 @@
 [
   {
     "tag": "oicl-control-surface",
-    "source": "../components/OiclControlSurface/OiclControlSurface.tsx",
+    "source": "../components/oicl-control-surface/oicl-control-surface.tsx",
     "props": ["title"],
     "events": ["button-click"]
   }

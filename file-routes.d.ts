@@ -45,15 +45,15 @@ declare module "virtual:file-routes" {
       $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
     },
     {
-      path: "/components/channel-api";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/channel-api")>;
-      $$route?: undefined;
-    },
-    {
       path: "/components/";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/components/index")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/components/channel-api";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/channel-api")>;
       $$route?: undefined;
     },
     {
