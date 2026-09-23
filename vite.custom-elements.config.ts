@@ -18,6 +18,57 @@ const definitions = JSON.parse(
   readFileSync(indexPath, 'utf8'),
 ) as CustomElementDefinition[];
 
+function inlineImportedCss(): Plugin {
+  const openBridgeImport = '@oicl/openbridge-webcomponents/dist/openbridge.css';
+  const openBridgeStylesheet = resolve(
+    projectRoot,
+    'node_modules/@oicl/openbridge-webcomponents/dist/openbridge.css',
+  );
+  const virtualPrefix = '\0inline-css:';
+  const cssModules = new Map<string, string>();
+  let nextVirtualId = 0;
+
+  return {
+    name: 'inline-imported-css',
+    enforce: 'pre',
+    async resolveId(source, importer) {
+      if (source === openBridgeImport) {
+        return undefined;
+      }
+
+      const resolved = await this.resolve(source, importer, { skipSelf: true });
+
+      if (!resolved || !/\.css(?:$|\?)/.test(resolved.id) || resolved.id === openBridgeStylesheet) {
+        return undefined;
+      }
+
+      const virtualId = `${virtualPrefix}${nextVirtualId++}`;
+      cssModules.set(virtualId, resolved.id);
+      return virtualId;
+    },
+    load(id) {
+      const cssPath = cssModules.get(id);
+
+      if (!cssPath) {
+        return undefined;
+      }
+
+      const css = JSON.stringify(readFileSync(cssPath.split('?')[0], 'utf8'));
+      const key = JSON.stringify(cssPath);
+
+      return `
+        const key = ${key};
+        if (typeof document !== 'undefined' && !Array.from(document.querySelectorAll('style[data-custom-element-css]')).some((style) => style.dataset.customElementCss === key)) {
+          const style = document.createElement('style');
+          style.dataset.customElementCss = key;
+          style.textContent = ${css};
+          document.head.append(style);
+        }
+      `;
+    },
+  };
+}
+
 function copyOpenBridgeCss(): Plugin {
   const stylesheet = resolve(
     projectRoot,
@@ -195,6 +246,7 @@ function toTypeName(tag: string) {
 export default defineConfig({
   publicDir: false,
   plugins: [
+    inlineImportedCss(),
     copyOpenBridgeCss(),
     solid({
       compiler: 'babel',

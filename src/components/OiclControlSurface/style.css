@@ -1,0 +1,20 @@
+obc-card {
+  color: var(--element-neutral-color);
+}
+
+.alert {
+  padding: 1rem;
+  
+  &.alarm {
+    background-color: var(--alert-alarm-color);
+    color: var(--on-alarm-active-color);
+  }
+  &.warning {
+    background-color: var(--alert-warning-color);
+    color: var(--on-warning-active-color);
+  }
+  &.caution {
+    background-color: var(--alert-caution-color);
+    color: var(--on-caution-active-color);
+  }
+}
