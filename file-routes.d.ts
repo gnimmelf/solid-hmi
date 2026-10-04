@@ -51,15 +51,15 @@ declare module "virtual:file-routes" {
       $$route?: undefined;
     },
     {
-      path: "/components/oicl-control-surface";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
-      $$route?: undefined;
-    },
-    {
       path: "/components/";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/components/index")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/components/oicl-control-surface";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
       $$route?: undefined;
     },
     {

@@ -1,18 +1,22 @@
 import { onSettled, createSignal } from "solid-js";
 import type { ObcButton } from "@oicl/openbridge-webcomponents/dist/components/button/button.js";
+import type { ObcDropdownButton } from "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
 import type { ObcToggleButtonGroup } from "@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js";
 import SpectrogramScene from "./scene";
 import { writeSimulatedSpectrum } from "./simulator.js";
 import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
 import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
+import "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
 import "@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js";
 import "@oicl/openbridge-webcomponents/dist/components/toggle-button-option/toggle-button-option.js";
 import "./style.css";
 
 type AudioSource = "simulation" | "microphone";
+type ColormapName = "viridis" | "jet" | "hot" | "cool" | "rainbow";
 
 export default function Spectrogram(props: { title: string }) {
   let sourcePicker!: ObcToggleButtonGroup;
+  let colormapPicker!: ObcDropdownButton;
   let streamButton!: ObcButton;
   let audioContext: AudioContext | undefined;
   let stream: MediaStream | undefined;
@@ -22,8 +26,16 @@ export default function Spectrogram(props: { title: string }) {
   let requestId = 0;
   const frequencySamples = 128;
   const spectrumFrame = new Float32Array(frequencySamples + 1);
+  const colormapOptions: ObcDropdownButton["options"] = [
+    { value: "viridis", label: "Viridis" },
+    { value: "jet", label: "Jet" },
+    { value: "hot", label: "Hot" },
+    { value: "cool", label: "Cool" },
+    { value: "rainbow", label: "Rainbow" },
+  ];
   let selectSource = (_source: AudioSource) => {};
   const [source, setSource] = createSignal<AudioSource>("simulation");
+  const [colormap, setColormap] = createSignal<ColormapName>("viridis");
   const [activeSource, setActiveSource] = createSignal<AudioSource>();
   const [running, setRunning] = createSignal(false);
   const [starting, setStarting] = createSignal(false);
@@ -84,6 +96,9 @@ export default function Spectrogram(props: { title: string }) {
   };
 
   onSettled(() => {
+    colormapPicker.options = colormapOptions;
+    colormapPicker.value = colormap();
+
     const startSimulation = () => {
       requestId += 1;
       releaseMicrophone();
@@ -177,6 +192,20 @@ export default function Spectrogram(props: { title: string }) {
       }
     };
 
+    const handleColormapChange = (event: Event) => {
+      const selected = (event as CustomEvent<{ value: string }>).detail.value;
+      if (
+        selected === "viridis" ||
+        selected === "jet" ||
+        selected === "hot" ||
+        selected === "cool" ||
+        selected === "rainbow"
+      ) {
+        colormapPicker.value = selected;
+        setColormap(selected);
+      }
+    };
+
     const handleStreamClick = () => {
       if (running() || starting()) stopStream();
       else if (source() === "simulation") startSimulation();
@@ -184,11 +213,13 @@ export default function Spectrogram(props: { title: string }) {
     };
 
     sourcePicker.addEventListener("change", handleSourceChange);
+    colormapPicker.addEventListener("change", handleColormapChange);
     streamButton.addEventListener("click", handleStreamClick);
 
     return () => {
       disposed = true;
       sourcePicker.removeEventListener("change", handleSourceChange);
+      colormapPicker.removeEventListener("change", handleColormapChange);
       streamButton.removeEventListener("click", handleStreamClick);
       stopStream();
     };
@@ -223,12 +254,16 @@ export default function Spectrogram(props: { title: string }) {
             >
               {starting() ? "Cancel" : running() ? "Stop" : "Start"}
             </obc-button>
+
+            <obc-dropdown-button ref={colormapPicker} />
           </div>
         </div>
       </obc-card>
       <br />
       <obc-card class="spectrogram-display-card">
-        <div slot="title">{props.title} - {status()}</div>
+        <div slot="title">
+          {props.title} - {status()}
+        </div>
         {error() && (
           <p class="spectrogram-error" role="alert">
             {error()}
@@ -237,6 +272,7 @@ export default function Spectrogram(props: { title: string }) {
         <SpectrogramScene
           running={running}
           frameData={getFrameData}
+          colormap={colormap}
           onError={setError}
         />
       </obc-card>

@@ -1,9 +1,13 @@
 import { createEffect, onSettled, type Accessor } from "solid-js";
 import * as THREE from "three";
+import colormap from "colormap";
+
+type ColormapName = "viridis" | "jet" | "hot" | "cool" | "rainbow";
 
 type SpectrogramSceneProps = {
   running: Accessor<boolean>;
   frameData: () => Float32Array | undefined;
+  colormap: Accessor<ColormapName>;
   onError: (message: string) => void;
 };
 
@@ -12,6 +16,7 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
   let renderer: THREE.WebGLRenderer | undefined;
   let animationFrame = 0;
   let displacement: THREE.BufferAttribute | undefined;
+  let paletteTexture: THREE.DataTexture | undefined;
   let disposed = false;
 
   const timeSamples = 180;
@@ -37,6 +42,26 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
       animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
     }
   };
+
+  const updateColormap = (name: ColormapName) => {
+    if (!paletteTexture) return;
+    const colors = colormap({ colormap: name, nshades: 256, format: "float" });
+    const data = paletteTexture.image.data as Uint8Array;
+    for (let index = 0; index < colors.length; index += 1) {
+      const offset = index * 4;
+      data[offset] = Math.round(colors[index][0] * 255);
+      data[offset + 1] = Math.round(colors[index][1] * 255);
+      data[offset + 2] = Math.round(colors[index][2] * 255);
+      data[offset + 3] = 255;
+    }
+    paletteTexture.needsUpdate = true;
+    if (renderer) renderer.render(scene, camera);
+  };
+
+  createEffect(
+    () => props.colormap(),
+    (name) => updateColormap(name),
+  );
 
   createEffect(
     () => props.running(),
@@ -83,7 +108,19 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
     geometry.setAttribute("displacement", displacement);
     geometry.setIndex(indices);
 
+    paletteTexture = new THREE.DataTexture(
+      new Uint8Array(256 * 4),
+      256,
+      1,
+      THREE.RGBAFormat,
+    );
+    paletteTexture.magFilter = THREE.LinearFilter;
+    paletteTexture.minFilter = THREE.LinearFilter;
+    paletteTexture.generateMipmaps = false;
+    updateColormap(props.colormap());
+
     const material = new THREE.ShaderMaterial({
+      uniforms: { uColorMap: { value: paletteTexture } },
       vertexShader: `
         attribute float displacement;
         varying float vAmplitude;
@@ -97,14 +134,12 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
         }
       `,
       fragmentShader: `
+        uniform sampler2D uColorMap;
         varying float vAmplitude;
         varying vec2 vUv;
         void main() {
-          vec3 deep = vec3(0.025, 0.18, 0.27);
-          vec3 teal = vec3(0.06, 0.72, 0.67);
-          vec3 gold = vec3(1.0, 0.67, 0.22);
-          vec3 color = mix(deep, teal, smoothstep(0.06, 0.48, vAmplitude));
-          color = mix(color, gold, smoothstep(0.48, 0.92, vAmplitude));
+          float level = clamp(vAmplitude, 0.0, 1.0);
+          vec3 color = texture2D(uColorMap, vec2(level, 0.5)).rgb;
           float grid = 0.84 + 0.16 * step(0.985, fract(vUv.x * 180.0));
           gl_FragColor = vec4(color * grid, 1.0);
         }
@@ -151,6 +186,8 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
       resizeObserver.disconnect();
       geometry.dispose();
       material.dispose();
+      paletteTexture?.dispose();
+      paletteTexture = undefined;
       renderer?.dispose();
       renderer?.domElement.remove();
       renderer = undefined;
