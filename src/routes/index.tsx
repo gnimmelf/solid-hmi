@@ -1,12 +1,13 @@
 import { marked } from 'marked';
 import readme from '../../README.md?raw';
+import { Title } from '@solidjs/meta';
 
 const readmeHtml = marked.parse(readme) as string;
 
 export default function Home() {
   return (
     <main>
-      {/* oxlint-disable-next-line solid/no-innerhtml -- README.md is bundled from this repository. */}
+      <Title>Solid HMI</Title>
       <article class="readme" innerHTML={readmeHtml} />
     </main>
   );

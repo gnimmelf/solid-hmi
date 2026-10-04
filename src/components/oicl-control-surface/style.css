@@ -4,7 +4,7 @@ obc-card {
 
 .alert {
   padding: 1rem;
-  
+
   &.alarm {
     background-color: var(--alert-alarm-color);
     color: var(--on-alarm-active-color);

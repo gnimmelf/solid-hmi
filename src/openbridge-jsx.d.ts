@@ -10,6 +10,9 @@ import type { JSX as SolidJSX } from '@solidjs/web';
 import type { ObcCard } from '@oicl/openbridge-webcomponents/dist/components/card/card.js';
 import type { ObcButton } from '@oicl/openbridge-webcomponents/dist/components/button/button.js';
 import type { ObcIconButton } from '@oicl/openbridge-webcomponents/dist/components/icon-button/icon-button.js';
+import type { ObcToggleButtonGroup } from '@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js';
+import type { ObcToggleButtonOption } from '@oicl/openbridge-webcomponents/dist/components/toggle-button-option/toggle-button-option.js';
+import type { ObcStartStopSwitch } from '@oicl/openbridge-webcomponents/dist/components/start-stop-switch/start-stop-switch.js';
 import type { ObiPaletteDimming } from '@oicl/openbridge-webcomponents/dist/icons/icon-palette-dimming.js';
 
 /** Register every OICL custom element used in .tsx files here. */
@@ -17,6 +20,9 @@ interface OiclComponents {
   'obc-card': ObcCard;
   'obc-button': ObcButton;
   'obc-icon-button': ObcIconButton;
+  'obc-toggle-button-group': ObcToggleButtonGroup;
+  'obc-toggle-button-option': ObcToggleButtonOption;
+  'obc-start-stop-switch': ObcStartStopSwitch;
   'obi-palette-dimming': ObiPaletteDimming;
 }
 

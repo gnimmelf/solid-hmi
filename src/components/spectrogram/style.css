@@ -1,0 +1,49 @@
+.spectrogram {
+	display: flex;
+	min-height: 0;
+	flex-direction: column;
+	height: 100%;
+}
+
+.spectrogram-display-card {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.spectrogram-stage {
+	display: flex;
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.spectrogram-stage canvas {
+	display: block;
+	width: 100%;
+	height: 100%;
+}
+
+.spectrogram-controls,
+.spectrogram-source {
+	display: inline-flex;
+	align-items: center;
+}
+
+.spectrogram-controls {
+	gap: 0.5rem;
+}
+
+.spectrogram-source {
+	gap: 0;
+}
+
+.spectrogram-mic-button {
+	min-width: 5.2rem;
+}
+
+.spectrogram-error {
+	background-color: var(--alert-warning-color);
+  color: var(--on-warning-active-color);
+}

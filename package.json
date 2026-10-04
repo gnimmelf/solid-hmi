@@ -41,11 +41,13 @@
     "vitest": "^5.0.0"
   },
   "dependencies": {
-    "@oicl/openbridge-webcomponents": "^1.0.1",
+    "@oicl/openbridge-webcomponents": "^2.0.0-next.174",
     "@solidjs/meta": "^1.0.0-next.2",
     "@solidjs/router": "^2.0.0-next.21",
     "@solidjs/web": "^2.0.0-rc.6",
+    "@types/three": "^0.186.0",
     "marked": "^18.0.13",
-    "solid-js": "^2.0.0-rc.6"
+    "solid-js": "^2.0.0-rc.6",
+    "three": "^0.186.1"
   }
 }
