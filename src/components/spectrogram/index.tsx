@@ -16,6 +16,7 @@ type ColormapName = "viridis" | "jet" | "hot" | "cool" | "rainbow";
 
 export default function Spectrogram(props: { title: string }) {
   let sourcePicker!: ObcToggleButtonGroup;
+  let cameraModePicker!: ObcToggleButtonGroup;
   let colormapPicker!: ObcDropdownButton;
   let streamButton!: ObcButton;
   let audioContext: AudioContext | undefined;
@@ -35,6 +36,7 @@ export default function Spectrogram(props: { title: string }) {
   ];
   let selectSource = (_source: AudioSource) => {};
   const [source, setSource] = createSignal<AudioSource>("simulation");
+  const [cameraMode, setCameraMode] = createSignal<"fixed" | "orbit">("fixed");
   const [colormap, setColormap] = createSignal<ColormapName>("viridis");
   const [activeSource, setActiveSource] = createSignal<AudioSource>();
   const [running, setRunning] = createSignal(false);
@@ -192,6 +194,13 @@ export default function Spectrogram(props: { title: string }) {
       }
     };
 
+    const handleCameraModeChange = (event: Event) => {
+      const selected = (event as CustomEvent<{ value: string }>).detail.value;
+      if (selected === "fixed" || selected === "orbit") {
+        setCameraMode(selected);
+      }
+    };
+
     const handleColormapChange = (event: Event) => {
       const selected = (event as CustomEvent<{ value: string }>).detail.value;
       if (
@@ -213,12 +222,14 @@ export default function Spectrogram(props: { title: string }) {
     };
 
     sourcePicker.addEventListener("change", handleSourceChange);
+    cameraModePicker.addEventListener("change", handleCameraModeChange);
     colormapPicker.addEventListener("change", handleColormapChange);
     streamButton.addEventListener("click", handleStreamClick);
 
     return () => {
       disposed = true;
       sourcePicker.removeEventListener("change", handleSourceChange);
+      cameraModePicker.removeEventListener("change", handleCameraModeChange);
       colormapPicker.removeEventListener("change", handleColormapChange);
       streamButton.removeEventListener("click", handleStreamClick);
       stopStream();
@@ -256,6 +267,21 @@ export default function Spectrogram(props: { title: string }) {
             </obc-button>
 
             <obc-dropdown-button ref={colormapPicker} />
+            <obc-toggle-button-group
+              class="spectrogram-source"
+              prop:value={cameraMode()}
+              variant="regular"
+              hugText
+              aria-label="Camera controls"
+              ref={cameraModePicker}
+            >
+              <obc-toggle-button-option value="fixed">
+                Fixed
+              </obc-toggle-button-option>
+              <obc-toggle-button-option value="orbit">
+                Orbit
+              </obc-toggle-button-option>
+            </obc-toggle-button-group>
           </div>
         </div>
       </obc-card>
@@ -273,6 +299,7 @@ export default function Spectrogram(props: { title: string }) {
           running={running}
           frameData={getFrameData}
           colormap={colormap}
+          orbitEnabled={() => cameraMode() === "orbit"}
           onError={setError}
         />
       </obc-card>

@@ -1,5 +1,6 @@
 import { createEffect, onSettled, type Accessor } from "solid-js";
 import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import colormap from "colormap";
 
 type ColormapName = "viridis" | "jet" | "hot" | "cool" | "rainbow";
@@ -8,6 +9,7 @@ type SpectrogramSceneProps = {
   running: Accessor<boolean>;
   frameData: () => Float32Array | undefined;
   colormap: Accessor<ColormapName>;
+  orbitEnabled: Accessor<boolean>;
   onError: (message: string) => void;
 };
 
@@ -17,13 +19,63 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
   let animationFrame = 0;
   let displacement: THREE.BufferAttribute | undefined;
   let paletteTexture: THREE.DataTexture | undefined;
+  let orbitControls: OrbitControls | undefined;
   let disposed = false;
+  let scene: THREE.Scene;
+  let camera: THREE.PerspectiveCamera;
 
   const timeSamples = 180;
   const frequencySamples = 128;
   const vertexCountPerColumn = frequencySamples + 1;
   const vertexCount = (timeSamples + 1) * vertexCountPerColumn;
   const heightData = new Float32Array(vertexCount);
+
+  const renderScene = () => {
+    if (renderer) renderer.render(scene, camera);
+  };
+
+  const setFixedCamera = () => {
+    camera.up.set(0, 1, 0);
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const fitHeight = 22;
+    const distance = fitHeight / (2 * Math.tan(verticalFov / 2));
+    camera.position.set(0, 0, distance);
+    camera.lookAt(0, 0, 0);
+  };
+
+  const setOrbitCamera = () => {
+    camera.up.set(0, 0, 1);
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const distance = 22 / (2 * Math.tan(verticalFov / 2));
+    camera.position.set(0, -distance * 0.85, distance * 0.65);
+    camera.lookAt(0, 0, 0);
+  };
+
+  const configureOrbitControls = (enabled: boolean) => {
+    if (!renderer) return;
+    orbitControls?.dispose();
+    orbitControls = undefined;
+    if (enabled) {
+      setOrbitCamera();
+      orbitControls = new OrbitControls(camera, renderer.domElement);
+      orbitControls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+      orbitControls.target.set(0, 0, 0);
+      orbitControls.addEventListener("change", renderScene);
+      orbitControls.update();
+    } else {
+      setFixedCamera();
+    }
+    renderScene();
+  };
+
+  createEffect(
+    () => props.orbitEnabled(),
+    (enabled) => configureOrbitControls(enabled),
+  );
 
   const renderFrame = (
     scene: THREE.Scene,
@@ -72,13 +124,11 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
     },
   );
 
-  let scene: THREE.Scene;
-  let camera: THREE.PerspectiveCamera;
-
   onSettled(() => {
     scene = new THREE.Scene();
-    scene.background = new THREE.Color("#10191d");
+    scene.background = null;
     camera = new THREE.PerspectiveCamera(27, 1, 0.1, 300);
+    setFixedCamera();
 
     const geometry = new THREE.BufferGeometry();
     const positions = new Float32Array(vertexCount * 3);
@@ -150,10 +200,11 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
     scene.add(mesh);
 
     try {
-      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setClearColor("#10191d");
+      renderer.setClearColor(0x000000, 0);
       canvasHost.appendChild(renderer.domElement);
+      configureOrbitControls(props.orbitEnabled());
     } catch {
       props.onError("WebGL is unavailable in this browser.");
       return;
@@ -165,11 +216,8 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
       const height = Math.max(canvasHost.clientHeight, 1);
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
-      const verticalFov = THREE.MathUtils.degToRad(camera.fov);
       const fitHeight = 22;
-      const distance = fitHeight / (2 * Math.tan(verticalFov / 2));
-      camera.position.set(0, 0, distance);
-      camera.lookAt(0, 0, 0);
+      if (!orbitControls) setFixedCamera();
       mesh.scale.x = (fitHeight * camera.aspect * 0.90) / 34;
       camera.updateProjectionMatrix();
       renderer.render(scene, camera);
@@ -184,6 +232,8 @@ export default function SpectrogramScene(props: SpectrogramSceneProps) {
       disposed = true;
       cancelAnimationFrame(animationFrame);
       resizeObserver.disconnect();
+      orbitControls?.dispose();
+      orbitControls = undefined;
       geometry.dispose();
       material.dispose();
       paletteTexture?.dispose();
