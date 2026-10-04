@@ -1,6 +1,10 @@
 import { Title } from '@solidjs/meta';
 
-const pageEntries = Object.entries(import.meta.glob('./*.tsx', { eager: true }))
+const pageEntries = Object.entries(
+  (import.meta as ImportMeta & {
+    glob: (pattern: string, options: { eager: true }) => Record<string, unknown>;
+  }).glob('./*.tsx', { eager: true }),
+)
   .filter(([file]) => file !== './index.tsx')
   .map(([file, module]) => {
     const slug = file.replace(/^\.\//, '').replace(/\.tsx$/, '');

@@ -33,21 +33,27 @@ declare module "virtual:file-routes" {
   /** The flat route manifest, in scan order. */
   const routes: readonly [
     {
-      path: "/";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/index")>;
-      $$route?: undefined;
-    },
-    {
       path: "/*404";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
       $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
     },
     {
+      path: "/";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/index")>;
+      $$route?: undefined;
+    },
+    {
       path: "/components/channel-api";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/components/channel-api")>;
+      $$route?: undefined;
+    },
+    {
+      path: "/components/oicl-control-surface";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
       $$route?: undefined;
     },
     {
@@ -57,9 +63,9 @@ declare module "virtual:file-routes" {
       $$route?: undefined;
     },
     {
-      path: "/components/oicl-control-surface";
+      path: "/components/spectrogram";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/spectrogram")>;
       $$route?: undefined;
     }
   ];
@@ -96,6 +102,14 @@ declare module "virtual:file-routes" {
       id: "/components/channel-api";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/components/channel-api")>;
+      $$route?: undefined;
+      children?: undefined;
+    },
+    {
+      path: "/components/spectrogram";
+      id: "/components/spectrogram";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/components/spectrogram")>;
       $$route?: undefined;
       children?: undefined;
     },
