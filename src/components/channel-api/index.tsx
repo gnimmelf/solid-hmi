@@ -57,7 +57,9 @@ export default function ChannelApi(props: { title: string }) {
   return (
     <obc-card class={styles.root}>
       <div slot="title">
-        {props.title} - {channel.windowId}
+        {props.title} -
+        <Show when={channel.isRoot}> ROOT - </Show>
+        {channel.windowId} 
       </div>
 
       <div class={styles["card-content"]}>
@@ -77,7 +79,32 @@ export default function ChannelApi(props: { title: string }) {
                 Launch other Window
               </obc-button>
               <div>Sub window count: {channel.peers().length}</div>
+              <For each={channel.peers()}>
+                {(peerId) => (
+                  <obc-button
+                    onClick={() =>
+                      channel.sendDirect(peerId, "message", {
+                        propA: `Direct message from root to ${peerId}`,
+                      })
+                    }
+                  >
+                    Direct message to {peerId}
+                  </obc-button>
+                )}
+              </For>
             </div>
+          </Show>
+
+          <Show when={!channel.isRoot}>
+            <obc-button
+              onClick={() =>
+                channel.sendDirect(channel.rootId, "message", {
+                  propA: "Direct message from child to root",
+                })
+              }
+            >
+              Direct message to root
+            </obc-button>
           </Show>
 
           <div class={styles.controls}>
