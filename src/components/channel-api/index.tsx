@@ -1,129 +1,93 @@
 import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
 import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
-import { createEffect, createSignal, onSettled, Show } from "solid-js";
+import { createSignal, For, onSettled, Show } from "solid-js";
+import {
+  WindowChannelRegistry,
+  type WindowChannelMessage,
+} from "../../lib/window-channel";
 import "./style.css";
 
-type MessageType = "volume" | "register";
-
-type Message = {
-  type: MessageType;
-  sender: string;
-  ts: string;
-  data: any;
-};
-
-const ID_PARAM = "uuid";
-
-function getWindowId() {
-  const url = new URL(window.location.href);
-  return url.searchParams.get(ID_PARAM) ?? "root";
-}
-
 export default function ChannelApi(props: { title: string }) {
-  const myChannel = new BroadcastChannel("app_window_sync");
-
-  const [messages, setMessages] = createSignal<any[]>([]);
-  const [peers, setPeers] = createSignal<any[]>([]);
-
-  const windowId = getWindowId();
-
+  const channel = new WindowChannelRegistry("app_window_sync");
+  const [messages, setMessages] = createSignal<WindowChannelMessage[]>([]);
   const [volume, setVolume] = createSignal(0);
-  const [outboundVolume, setOutboundVolume] = createSignal<number>();
-
-  myChannel.onmessage = (event) => {
-    const message = JSON.parse(event.data) as Message;
-    if (message.type === "volume") {
-      setVolume(message.data.value);
-    } else if (message.type === "register") {
-      setPeers([peers(), message.sender]);
-    } else {
-      setMessages([...messages(), message]);
-    }
-  };
-
-  const launchNewWindow = (url = window.location.href) => {
-    const newWindow = window.open(
-      `${url}?${ID_PARAM}=${crypto.randomUUID()}`,
-      "_blank",
-    );
-
-    if (!newWindow) {
-      console.error("Popup blocked! Please allow popups for this site.");
-    }
-  };
-
-  const broadcast = (data: any, type?: MessageType) => {
-    myChannel.postMessage(
-      JSON.stringify({
-        type: type ?? "",
-        sender: windowId,
-        ts: new Date(),
-        data,
-      }),
-    );
-  };
-
-  const syncVolume = (value: number) => {
-    console.log("!");
-    broadcast({ value }, "volume");
-  };
-
-  createEffect(
-    () => outboundVolume(),
-    (value) => {
-      if (value !== undefined) {
-        syncVolume(value);
-      }
-    },
-  );
 
   onSettled(() => {
-    broadcast({}, "register");
+    const unsubscribe = channel.subscribe((message) => {
+      if (message.type === "volume") {
+        const data = message.data as { value?: unknown };
+        if (typeof data.value === "number") setVolume(data.value);
+      } else {
+        setMessages((messages) => [...messages, message]);
+      }
+    });
+    const disconnect = channel.connect();
+
+    return () => {
+      unsubscribe();
+      disconnect();
+    };
   });
 
   return (
     <obc-card>
       <div slot="title">
-        {props.title} - {windowId}
-      </div>
-      <Show when={windowId === "root"}>
-        <div class="controls">
-          <obc-button onClick={() => launchNewWindow()}>
-            Launch other Window
-          </obc-button>
-          <div>Sub window count: {peers().length}</div>
-        </div>
-      </Show>
-
-      <div class="controls">
-        <obc-button onClick={() => broadcast({ propA: "value" })}>
-          Send test message
-        </obc-button>
-        <div>
-          <label for="volume">Volume Control:</label>
-          <br />
-          <input
-            type="range"
-            id="volume"
-            name="volume"
-            min="0"
-            max="100"
-            value={volume()}
-            step="5"
-            onInput={(event) => {
-              const value = parseInt(event.currentTarget.value);
-              setVolume(value);
-              setOutboundVolume(value);
-            }}
-          />
-        </div>
+        {props.title} - {channel.windowId}
       </div>
 
-      <div>
-        <div>Received messages</div>
-        {messages().map((message: Message) => (
-          <div>{JSON.stringify(message)}</div>
-        ))}
+      <div class="card-content">
+
+        <section class="controls">
+          <Show when={channel.isRoot}>
+            <div class="controls">
+              <obc-button
+                onClick={() => {
+                  if (!channel.openChild()) {
+                    console.error(
+                      "Popup blocked! Please allow popups for this site.",
+                    );
+                  }
+                }}
+              >
+                Launch other Window
+              </obc-button>
+              <div>Sub window count: {channel.peers().length}</div>
+            </div>
+          </Show>
+
+          <div class="controls">
+            <obc-button
+              onClick={() => channel.broadcast("message", { propA: "value" })}
+            >
+              Broadcast test message
+            </obc-button>
+            <div>
+              <label for="volume">Volume Control:</label>
+              <br />
+              <input
+                type="range"
+                id="volume"
+                name="volume"
+                min="0"
+                max="100"
+                value={volume()}
+                step="5"
+                onInput={(event) => {
+                  const value = parseInt(event.currentTarget.value);
+                  setVolume(value);
+                  channel.broadcast("volume", { value });
+                }}
+              />
+            </div>
+          </div>
+        </section>
+
+        <section class="messages">
+          <div>Received messages</div>
+          <For each={messages()}>
+            {(message) => <div>{JSON.stringify(message)}</div>}
+          </For>
+        </section>
       </div>
     </obc-card>
   );
