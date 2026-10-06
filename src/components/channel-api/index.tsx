@@ -1,22 +1,47 @@
 import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
 import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
 import { createSignal, For, onSettled, Show } from "solid-js";
+import * as v from "valibot";
 import {
   WindowChannelRegistry,
   type WindowChannelMessage,
 } from "../../lib/window-channel";
 import styles from "./style.module.css";
 
+const MessageSchemas = {
+  message: v.strictObject({ propA: v.string() }),
+  volume: v.strictObject({
+    value: v.pipe(v.number(), v.minValue(0), v.maxValue(100)),
+  }),
+};
+const StateSchema = v.strictObject({
+  volume: v.pipe(v.number(), v.minValue(0), v.maxValue(100)),
+});
+
 export default function ChannelApi(props: { title: string }) {
-  const channel = new WindowChannelRegistry("app_window_sync");
   const [messages, setMessages] = createSignal<WindowChannelMessage[]>([]);
   const [volume, setVolume] = createSignal(0);
+  const channel = new WindowChannelRegistry(
+    "app_window_sync",
+    window.location.href,
+    {
+      schemas: MessageSchemas,
+      schemaVersion: "1",
+      state: {
+        schema: StateSchema,
+        getSnapshot: () => ({ volume: volume() }),
+        applySnapshot: (state) => {
+          const snapshot = v.parse(StateSchema, state);
+          setVolume(snapshot.volume);
+        },
+      },
+    },
+  );
 
   onSettled(() => {
     const unsubscribe = channel.subscribe((message) => {
       if (message.type === "volume") {
-        const data = message.data as { value?: unknown };
-        if (typeof data.value === "number") setVolume(data.value);
+        setVolume(message.data.value);
       } else {
         setMessages((messages) => [...messages, message]);
       }
@@ -62,7 +87,7 @@ export default function ChannelApi(props: { title: string }) {
               Broadcast test message
             </obc-button>
             <div>
-              <label for="volume">Volume Control:</label>
+              <label for="volume">Synced Volume Control:</label>
               <br />
               <input
                 type="range"

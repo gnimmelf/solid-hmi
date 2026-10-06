@@ -4,72 +4,58 @@ This component demonstrates communication between a dashboard window and the mor
 
 ## Topology
 
-The current implementation is not a true peer-to-peer network. It is a root-scoped broadcast group with a root-maintained registry:
+The implementation is a root-scoped broadcast group with a recoverable coordinator:
 
 - The first window is the root and creates a `rootId`.
 - Each child receives the `rootId` and a unique `windowId` in its URL.
 - All windows use the same named `BroadcastChannel`.
 - Messages from another root group are ignored.
-- Children announce when they register and unregister.
-- The root maintains a reactive list of child window IDs.
-- Application messages are broadcast to every window in the group.
+- Every document has a separate session ID and announces when it registers and unregisters.
+- Every window maintains a reactive list of live peers from lifecycle messages and heartbeats.
+- The root begins as coordinator; surviving windows elect the lowest window ID if it disappears.
+- Application messages can be broadcast or addressed to one window.
+- Opener-child pairs establish a `MessageChannel`; addressed messages otherwise use the broadcast bus.
 
 Although every window can publish and receive messages, `BroadcastChannel` does not create direct connections between peers. It provides a same-origin group bus without addressing, routing, persistence, acknowledgements, or delivery guarantees.
 
-`MessageChannel` can later provide dedicated point-to-point links when targeted or high-volume communication is needed. The root would normally establish and distribute those connections, while `BroadcastChannel` remains useful for discovery and group events.
+`BroadcastChannel` remains the discovery, lifecycle, and group-event transport. A direct port is an optimization, not a separate source of truth.
 
-## Current Strengths
+## Implemented Hardening
 
-The prototype is a useful starting point because it already provides:
+The registry now provides:
 
-- Unique root and window identities.
+- Valibot validation for the envelope, lifecycle payloads, snapshots, and application-defined message payloads.
+- Unique root, window, and document-session identities.
 - Isolation between independent root window groups.
-- Child registration and unregistration.
-- Duplicate registration protection.
-- Runtime validation of the common message envelope.
-- Solid-reactive peer state.
-- Explicit connection and page lifecycle cleanup.
+- Registration, versioned state snapshot, and ready handshake.
+- Explicit rejection through `error()` when schema versions are incompatible.
+- Heartbeats and expiry for windows that vanish without sending `pagehide`.
+- Session-aware unregister handling, so a stale document cannot remove its replacement.
+- Optional recipient IDs and acknowledgement, timeout, retry, and duplicate-suppression handling.
+- Coordinator recovery after the original root closes.
+- Reconnectable registry instances and explicit lifecycle cleanup.
 
-This is sufficient for experimentation and non-critical synchronization of presentation state, such as selected equipment, navigation context, filters, and display preferences.
+Application schemas and snapshot behavior are supplied through the registry options. Incremental application messages are ignored until the initial snapshot has been validated and applied.
 
-## Limitations
+## Remaining Boundaries
 
-The current implementation is not yet suitable for operational command and control without additional safeguards.
-
-### Stale peers
-
-`pagehide` is not guaranteed after a browser crash, forced process termination, device sleep, or loss of resources. The root can therefore retain window IDs that no longer exist. Add periodic heartbeats and expire peers that have not been seen within a defined timeout.
-
-### Reload races
-
-A child reload reuses the `windowId` stored in its URL. A delayed `unregister` from the old document could remove the newly loaded document from the registry. Give every document instance a separate session or incarnation ID and apply lifecycle messages to that instance.
-
-### Initial state synchronization
-
-A new child only registers; it does not receive the current application state. Introduce an explicit handshake, for example:
-
-1. Child sends `register`.
-2. Root replies with a state snapshot.
-3. Child applies the snapshot and sends `ready`.
-4. Incremental updates begin.
-
-The snapshot should include a schema version so incompatible windows can fail clearly.
-
-### Targeted communication
-
-Every application message is currently delivered to all windows in the root group. Add an optional `recipientId` for logical addressing. Use `MessageChannel` only where a dedicated stream or transferable objects provide a concrete benefit.
+This remains suitable for synchronization of presentation state, such as selected equipment, navigation context, filters, and display preferences. It is not a system of record.
 
 ### Trust and authorization
 
-Any same-origin page that knows the channel name can publish a structurally valid message. Validate the payload for each message type and consider an unguessable group token. Channel membership must not be treated as authorization for control actions.
+The root ID is an unguessable group token under normal creation, but any same-origin page that obtains it can publish structurally valid messages. Payload validation and channel membership are not authorization for control actions.
 
 ### Delivery semantics
 
-`BroadcastChannel` does not persist messages and does not guarantee that a window was alive or ready to receive one. Important operations require message IDs, acknowledgements, timeouts, retries where appropriate, and idempotent handlers.
+Messages are not persisted. Optional acknowledgements confirm handling by a currently connected recipient and retries are deduplicated, but they do not provide durable or exactly-once delivery. Handlers for important workflows must remain idempotent.
 
-### Reconnection
+### Coordinator recovery
 
-Disconnecting closes the underlying `BroadcastChannel`, so the current registry instance cannot reconnect. Either document the registry as single-use or create and attach the channel during `connect()` and release it during `disconnect()`.
+Election preserves coordination after the root closes, but all windows can still disappear together. A newly elected coordinator only has the state that reached that browser document; durable recovery still belongs in the backend.
+
+### Direct channels
+
+Direct ports are established only between opener and child. Addressed sibling traffic deliberately falls back to `BroadcastChannel`; add port brokering only if measurements show that sibling traffic needs it.
 
 ## Recommended Boundary
 
@@ -77,14 +63,4 @@ Use this browser channel to coordinate windows and synchronize user-interface st
 
 For commands initiated by the UI, send the request to the backend and let the backend validate, execute, persist, and publish the resulting state. Cross-window messages can then prompt immediate UI updates, while the backend remains the recovery and reconciliation source.
 
-## Suggested Hardening Order
-
-1. Define typed message payloads and validate each message type.
-2. Add a registration and state-snapshot handshake.
-3. Add document instance IDs, heartbeats, and peer expiry.
-4. Add recipient IDs for targeted messages.
-5. Add message IDs and acknowledgements only for workflows that require them.
-6. Add coordinator recovery if operation must continue after the root closes.
-7. Introduce `MessageChannel` for specific point-to-point traffic when measurements show that broadcast is insufficient.
-
-This keeps the architecture simple while establishing the lifecycle and correctness guarantees needed by a multi-window HMI.
+The registry intentionally keeps acknowledgements and direct delivery opt-in. Normal presentation updates should continue using broadcast because newer snapshots and backend reconciliation are the recovery path.
