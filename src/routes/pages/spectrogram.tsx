@@ -3,7 +3,7 @@ import { Title } from "@solidjs/meta";
 import type { ObcButton } from "@oicl/openbridge-webcomponents/dist/components/button/button.js";
 import type { ObcDropdownButton } from "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
 import type { ObcToggleButtonGroup } from "@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js";
-import SpectrogramScene from "../../components/spectrogram";
+import SpectrogramScene from "../../components/spectrogram-scene";
 import { writeSimulatedSpectrum } from "../../lib/spectrogram-simulator.js";
 import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
 import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
