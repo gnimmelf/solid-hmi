@@ -30,6 +30,9 @@ export default function Spectrogram(props: SpectrogramProps) {
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
 
+  const sampleRateHz = 10;
+  const sampleIntervalMs = 1000 / sampleRateHz;
+  let lastSampleAt = 0;
   const timeSamples = 180;
   const frequencySamples = 128;
   const vertexCountPerColumn = frequencySamples + 1;
@@ -86,9 +89,15 @@ export default function Spectrogram(props: SpectrogramProps) {
   const renderFrame = (
     scene: THREE.Scene,
     camera: THREE.PerspectiveCamera,
+    timestamp: number,
   ) => {
     if (disposed || !renderer) return;
-    if (running() && displacement) {
+    if (
+      running() &&
+      displacement &&
+      timestamp - lastSampleAt >= sampleIntervalMs
+    ) {
+      lastSampleAt = timestamp;
       heightData.copyWithin(0, vertexCountPerColumn, vertexCount);
       const newestColumn = timeSamples * vertexCountPerColumn;
       const nextFrame = frameData();
@@ -97,7 +106,9 @@ export default function Spectrogram(props: SpectrogramProps) {
     }
     renderer.render(scene, camera);
     if (running()) {
-      animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
+      animationFrame = requestAnimationFrame((nextTimestamp) =>
+        renderFrame(scene, camera, nextTimestamp),
+      );
     }
   };
 
@@ -126,7 +137,9 @@ export default function Spectrogram(props: SpectrogramProps) {
     (running) => {
       cancelAnimationFrame(animationFrame);
       if (running && renderer && !disposed)
-        animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
+        animationFrame = requestAnimationFrame((timestamp) =>
+          renderFrame(scene, camera, timestamp),
+        );
     },
   );
 
@@ -231,7 +244,9 @@ export default function Spectrogram(props: SpectrogramProps) {
     resizeObserver.observe(canvasHost);
     renderer.render(scene, camera);
     if (running()) {
-      animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
+      animationFrame = requestAnimationFrame((timestamp) =>
+        renderFrame(scene, camera, timestamp),
+      );
     }
 
     return () => {
