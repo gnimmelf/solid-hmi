@@ -6,9 +6,7 @@ import {
   untrack,
   type Accessor,
 } from "solid-js";
-import type { ObcButton } from "@oicl/openbridge-webcomponents/dist/components/button/button.js";
 import type { ObcDropdownButton } from "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
-import type { ObcToggleButtonGroup } from "@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js";
 import SpectrogramScene from "../spectrogram-scene";
 import { writeSimulatedSpectrum } from "../../lib/spectrogram-simulator.js";
 import { ColormapNames, type ColormapName } from "./channel";
@@ -32,15 +30,12 @@ type SpectrogramProps = {
 };
 
 export default function Spectrogram(props: SpectrogramProps) {
-  const attentionLevel = untrack(() => props.attentionLevel);
+  const attentionLevel = () => props.attentionLevel;
   const controlledRunning = untrack(() => props.running);
   const controlledColormap = untrack(() => props.colormap);
   const onRunningChange = untrack(() => props.onRunningChange);
   const onColormapChange = untrack(() => props.onColormapChange);
-  let sourcePicker!: ObcToggleButtonGroup;
-  let cameraModePicker!: ObcToggleButtonGroup;
   let colormapPicker!: ObcDropdownButton;
-  let streamButton!: ObcButton;
   let audioContext: AudioContext | undefined;
   let stream: MediaStream | undefined;
   let analyser: AnalyserNode | undefined;
@@ -54,6 +49,7 @@ export default function Spectrogram(props: SpectrogramProps) {
   );
   let selectSource = (_source: AudioSource) => {};
   let applyRunning = (_running: boolean) => {};
+  let toggleStream = () => {};
   const [source, setSource] = createSignal<AudioSource>("simulation");
   const [cameraMode, setCameraMode] = createSignal<"fixed" | "orbit">("fixed");
   const [localColormap, setLocalColormap] = createSignal<ColormapName>("viridis");
@@ -132,12 +128,33 @@ export default function Spectrogram(props: SpectrogramProps) {
     if (notify) onRunningChange?.(false);
   };
 
-  onSettled(() => {
-    if (attentionLevel >= 2) {
-      colormapPicker.options = colormapOptions;
-      colormapPicker.value = colormap();
+  const handleSourceChange = (event: Event) => {
+    const selected = (event as CustomEvent<{ value: string }>).detail.value;
+    if (selected === "simulation" || selected === "microphone") {
+      selectSource(selected);
     }
+  };
 
+  const handleCameraModeChange = (event: Event) => {
+    const selected = (event as CustomEvent<{ value: string }>).detail.value;
+    if (selected === "fixed" || selected === "orbit") {
+      setCameraMode(selected);
+    }
+  };
+
+  const handleColormapChange = (event: Event) => {
+    const selected = (event as CustomEvent<{ value: string }>).detail.value;
+    if (ColormapNames.includes(selected as ColormapName)) {
+      const nextColormap = selected as ColormapName;
+      colormapPicker.value = nextColormap;
+      setLocalColormap(nextColormap);
+      onColormapChange?.(nextColormap);
+    }
+  };
+
+  const handleStreamClick = () => toggleStream();
+
+  onSettled(() => {
     const startSimulation = (notify = false) => {
       requestId += 1;
       releaseMicrophone();
@@ -237,59 +254,17 @@ export default function Spectrogram(props: SpectrogramProps) {
       });
     };
 
-    const handleSourceChange = (event: Event) => {
-      const selected = (event as CustomEvent<{ value: string }>).detail.value;
-      if (selected === "simulation" || selected === "microphone") {
-        selectSource(selected);
-      }
-    };
-
-    const handleCameraModeChange = (event: Event) => {
-      const selected = (event as CustomEvent<{ value: string }>).detail.value;
-      if (selected === "fixed" || selected === "orbit") {
-        setCameraMode(selected);
-      }
-    };
-
-    const handleColormapChange = (event: Event) => {
-      const selected = (event as CustomEvent<{ value: string }>).detail.value;
-      if (
-        ColormapNames.includes(selected as ColormapName)
-      ) {
-        const nextColormap = selected as ColormapName;
-        colormapPicker.value = nextColormap;
-        setLocalColormap(nextColormap);
-        onColormapChange?.(nextColormap);
-      }
-    };
-
-    const handleStreamClick = () => {
+    toggleStream = () => {
       if (running() || starting()) stopStream(true);
       else if (source() === "simulation") startSimulation(true);
       else void startMicrophone(true);
     };
 
-    if (attentionLevel >= 2) {
-      sourcePicker.addEventListener("change", handleSourceChange);
-      colormapPicker.addEventListener("change", handleColormapChange);
-      streamButton.addEventListener("click", handleStreamClick);
-    }
-    if (attentionLevel === 3) {
-      cameraModePicker.addEventListener("change", handleCameraModeChange);
-    }
     if (controlledRunning) applyRunning(controlledRunning());
-    else if (attentionLevel === 1) startSimulation();
+    else if (attentionLevel() === 1) startSimulation();
 
     return () => {
       disposed = true;
-      if (attentionLevel >= 2) {
-        sourcePicker.removeEventListener("change", handleSourceChange);
-        colormapPicker.removeEventListener("change", handleColormapChange);
-        streamButton.removeEventListener("click", handleStreamClick);
-      }
-      if (attentionLevel === 3) {
-        cameraModePicker.removeEventListener("change", handleCameraModeChange);
-      }
       stopStream();
     };
   });
@@ -297,9 +272,9 @@ export default function Spectrogram(props: SpectrogramProps) {
   return (
     <section
       class={styles.spectrogram}
-      data-attention-level={attentionLevel}
+      data-attention-level={attentionLevel()}
     >
-      <Show when={attentionLevel >= 2}>
+      <Show when={attentionLevel() >= 2}>
         <div class={styles.controls}>
           <obc-toggle-button-group
             class={styles.source}
@@ -307,7 +282,7 @@ export default function Spectrogram(props: SpectrogramProps) {
             variant="regular"
             hugText
             aria-label="Audio source"
-            ref={(element) => { sourcePicker = element; }}
+            onChange={handleSourceChange}
           >
             <obc-toggle-button-option value="simulation">
               Simulation
@@ -318,19 +293,26 @@ export default function Spectrogram(props: SpectrogramProps) {
           </obc-toggle-button-group>
           <obc-button
             variant={running() || starting() ? "raised" : "normal"}
-            ref={(element) => { streamButton = element; }}
+            onClick={handleStreamClick}
           >
             {starting() ? "Cancel" : running() ? "Stop" : "Start"}
           </obc-button>
-          <obc-dropdown-button ref={(element) => { colormapPicker = element; }} />
-          <Show when={attentionLevel === 3}>
+          <obc-dropdown-button
+            onChange={handleColormapChange}
+            ref={(element) => {
+              colormapPicker = element;
+              colormapPicker.options = colormapOptions;
+              colormapPicker.value = colormap();
+            }}
+          />
+          <Show when={attentionLevel() === 3}>
             <obc-toggle-button-group
               class={styles.source}
               prop:value={cameraMode()}
               variant="regular"
               hugText
               aria-label="Camera controls"
-              ref={(element) => { cameraModePicker = element; }}
+              onChange={handleCameraModeChange}
             >
               <obc-toggle-button-option value="fixed">
                 Fixed
@@ -345,7 +327,7 @@ export default function Spectrogram(props: SpectrogramProps) {
 
       <div class={styles.heading}>
         <strong>{props.assetId}</strong>
-        <span>L{attentionLevel} · {status()}</span>
+        <span>L{attentionLevel()} · {status()}</span>
       </div>
       <Show when={error()}>
         <p class={styles.error} role="alert">{error()}</p>
@@ -355,7 +337,7 @@ export default function Spectrogram(props: SpectrogramProps) {
           running={running}
           frameData={getFrameData}
           colormap={colormap}
-          orbitEnabled={() => attentionLevel === 3 && cameraMode() === "orbit"}
+          orbitEnabled={() => attentionLevel() === 3 && cameraMode() === "orbit"}
           onError={setError}
         />
       </div>

@@ -71,6 +71,7 @@ export default function SpectrogramDashboard() {
   });
 
   const broadcastControls = (nextRunning: boolean, nextColormap: ColormapName) => {
+    if (attentionLevel() < 2) return;
     setRunning(nextRunning);
     setColormap(nextColormap);
     void channel.broadcast("spectrogram-controls", {
@@ -117,30 +118,18 @@ export default function SpectrogramDashboard() {
                 Open L3 workspace
               </obc-button>
             </div>
-            <Show
-              when={attentionLevel() === 1}
-              fallback={
-                <Spectrogram
-                  attentionLevel={2}
-                  assetId={assetId()}
-                  running={running}
-                  colormap={colormap}
-                  onRunningChange={(nextRunning) =>
-                    broadcastControls(nextRunning, colormap())
-                  }
-                  onColormapChange={(nextColormap) =>
-                    broadcastControls(running(), nextColormap)
-                  }
-                />
+            <Spectrogram
+              attentionLevel={attentionLevel()}
+              assetId={assetId()}
+              running={running}
+              colormap={colormap}
+              onRunningChange={(nextRunning) =>
+                broadcastControls(nextRunning, colormap())
               }
-            >
-              <Spectrogram
-                attentionLevel={1}
-                assetId={assetId()}
-                running={running}
-                colormap={colormap}
-              />
-            </Show>
+              onColormapChange={(nextColormap) =>
+                broadcastControls(running(), nextColormap)
+              }
+            />
           </section>
 
           <dl class={styles.summary}>

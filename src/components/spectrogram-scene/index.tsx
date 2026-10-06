@@ -30,7 +30,7 @@ export default function Spectrogram(props: SpectrogramProps) {
   let scene: THREE.Scene;
   let camera: THREE.PerspectiveCamera;
 
-  const sampleRateHz = 10;
+  const sampleRateHz = 30;
   const sampleIntervalMs = 1000 / sampleRateHz;
   let lastSampleAt = 0;
   const timeSamples = 180;
