@@ -72,7 +72,6 @@ export default function SpectrogramPage() {
         spectrumFrame,
         0,
         frequencySamples,
-        performance.now() / 1000,
       );
       return spectrumFrame;
     }

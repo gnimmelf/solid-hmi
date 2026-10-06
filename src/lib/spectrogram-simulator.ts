@@ -2,8 +2,9 @@ export function writeSimulatedSpectrum(
   target: Float32Array,
   offset: number,
   frequencySamples: number,
-  time: number,
 ) {
+  const time = performance.now() / 1000;
+
   const beat = 0.5 + 0.5 * Math.sin(time * 2.1);
   const midCenter = 0.42 + Math.sin(time * 0.75) * 0.12;
   const highCenter = 0.76 + Math.sin(time * 0.52 + 1) * 0.11;

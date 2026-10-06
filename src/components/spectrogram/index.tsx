@@ -105,7 +105,6 @@ export default function Spectrogram(props: SpectrogramProps) {
         spectrumFrame,
         0,
         frequencySamples,
-        performance.now() / 1000,
       );
       return spectrumFrame;
     }
