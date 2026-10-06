@@ -1,308 +1,251 @@
-import { onSettled, createSignal } from "solid-js";
-import type { ObcButton } from "@oicl/openbridge-webcomponents/dist/components/button/button.js";
-import type { ObcDropdownButton } from "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
-import type { ObcToggleButtonGroup } from "@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js";
-import SpectrogramScene from "./scene";
-import { writeSimulatedSpectrum } from "./simulator.js";
-import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
-import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
-import "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
-import "@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js";
-import "@oicl/openbridge-webcomponents/dist/components/toggle-button-option/toggle-button-option.js";
+import { createEffect, onSettled, type Accessor } from "solid-js";
+import * as THREE from "three";
+import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import colormap from "colormap";
 import "./style.css";
 
-type AudioSource = "simulation" | "microphone";
 type ColormapName = "viridis" | "jet" | "hot" | "cool" | "rainbow";
 
-export default function Spectrogram(props: { title: string }) {
-  let sourcePicker!: ObcToggleButtonGroup;
-  let cameraModePicker!: ObcToggleButtonGroup;
-  let colormapPicker!: ObcDropdownButton;
-  let streamButton!: ObcButton;
-  let audioContext: AudioContext | undefined;
-  let stream: MediaStream | undefined;
-  let analyser: AnalyserNode | undefined;
-  let microphoneFrame: Uint8Array<ArrayBuffer> | undefined;
+type SpectrogramProps = {
+  running: Accessor<boolean>;
+  frameData: () => Float32Array | undefined;
+  colormap: Accessor<ColormapName>;
+  orbitEnabled: Accessor<boolean>;
+  onError: (message: string) => void;
+};
+
+export default function Spectrogram(props: SpectrogramProps) {
+  let canvasHost!: HTMLDivElement;
+  let renderer: THREE.WebGLRenderer | undefined;
+  let animationFrame = 0;
+  let displacement: THREE.BufferAttribute | undefined;
+  let paletteTexture: THREE.DataTexture | undefined;
+  let orbitControls: OrbitControls | undefined;
   let disposed = false;
-  let requestId = 0;
+  let scene: THREE.Scene;
+  let camera: THREE.PerspectiveCamera;
+
+  const timeSamples = 180;
   const frequencySamples = 128;
-  const spectrumFrame = new Float32Array(frequencySamples + 1);
-  const colormapOptions: ObcDropdownButton["options"] = [
-    { value: "viridis", label: "Viridis" },
-    { value: "jet", label: "Jet" },
-    { value: "hot", label: "Hot" },
-    { value: "cool", label: "Cool" },
-    { value: "rainbow", label: "Rainbow" },
-  ];
-  let selectSource = (_source: AudioSource) => {};
-  const [source, setSource] = createSignal<AudioSource>("simulation");
-  const [cameraMode, setCameraMode] = createSignal<"fixed" | "orbit">("fixed");
-  const [colormap, setColormap] = createSignal<ColormapName>("viridis");
-  const [activeSource, setActiveSource] = createSignal<AudioSource>();
-  const [running, setRunning] = createSignal(false);
-  const [starting, setStarting] = createSignal(false);
-  const [status, setStatus] = createSignal("Stopped");
-  const [error, setError] = createSignal("");
+  const vertexCountPerColumn = frequencySamples + 1;
+  const vertexCount = (timeSamples + 1) * vertexCountPerColumn;
+  const heightData = new Float32Array(vertexCount);
 
-  const getFrameData = () => {
-    const currentSource = activeSource();
-
-    if (currentSource === "microphone" && analyser && microphoneFrame) {
-      analyser.getByteFrequencyData(microphoneFrame);
-      const nyquist = (audioContext?.sampleRate ?? 48000) / 2;
-      const minimumFrequency = 30;
-      const maximumFrequency = Math.max(minimumFrequency + 1, nyquist);
-      for (let row = 0; row <= frequencySamples; row += 1) {
-        const normalized = row / frequencySamples;
-        const frequency =
-          minimumFrequency *
-          Math.pow(maximumFrequency / minimumFrequency, normalized);
-        const bin = Math.min(
-          microphoneFrame.length - 1,
-          Math.round((frequency / nyquist) * microphoneFrame.length),
-        );
-        spectrumFrame[row] = (microphoneFrame[bin] ?? 0) / 255;
-      }
-      return spectrumFrame;
-    }
-    if (currentSource === "simulation") {
-      writeSimulatedSpectrum(
-        spectrumFrame,
-        0,
-        frequencySamples,
-        performance.now() / 1000,
-      );
-      return spectrumFrame;
-    }
-    return undefined;
+  const renderScene = () => {
+    if (renderer) renderer.render(scene, camera);
   };
 
-  const releaseMicrophone = () => {
-    stream?.getTracks().forEach((track) => track.stop());
-    stream = undefined;
-    analyser = undefined;
-    microphoneFrame = undefined;
-    if (audioContext && audioContext.state !== "closed") {
-      void audioContext.close();
-    }
-    audioContext = undefined;
+  const setFixedCamera = () => {
+    camera.up.set(0, 1, 0);
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const fitHeight = 22;
+    const distance = fitHeight / (2 * Math.tan(verticalFov / 2));
+    camera.position.set(0, 0, distance);
+    camera.lookAt(0, 0, 0);
   };
 
-  const stopStream = () => {
-    requestId += 1;
-    setActiveSource(undefined);
-    releaseMicrophone();
-    setRunning(false);
-    setStarting(false);
-    setStatus("Stopped");
+  const setOrbitCamera = () => {
+    camera.up.set(0, 0, 1);
+    const verticalFov = THREE.MathUtils.degToRad(camera.fov);
+    const distance = 22 / (2 * Math.tan(verticalFov / 2));
+    camera.position.set(0, -distance * 0.85, distance * 0.65);
+    camera.lookAt(0, 0, 0);
   };
+
+  const configureOrbitControls = (enabled: boolean) => {
+    if (!renderer) return;
+    orbitControls?.dispose();
+    orbitControls = undefined;
+    if (enabled) {
+      setOrbitCamera();
+      orbitControls = new OrbitControls(camera, renderer.domElement);
+      orbitControls.mouseButtons = {
+        LEFT: THREE.MOUSE.ROTATE,
+        MIDDLE: THREE.MOUSE.DOLLY,
+        RIGHT: THREE.MOUSE.PAN,
+      };
+      orbitControls.target.set(0, 0, 0);
+      orbitControls.addEventListener("change", renderScene);
+      orbitControls.update();
+    } else {
+      setFixedCamera();
+    }
+    renderScene();
+  };
+
+  createEffect(
+    () => props.orbitEnabled(),
+    (enabled) => configureOrbitControls(enabled),
+  );
+
+  const renderFrame = (
+    scene: THREE.Scene,
+    camera: THREE.PerspectiveCamera,
+  ) => {
+    if (disposed || !renderer) return;
+    if (props.running() && displacement) {
+      heightData.copyWithin(0, vertexCountPerColumn, vertexCount);
+      const newestColumn = timeSamples * vertexCountPerColumn;
+      const frameData = props.frameData();
+      if (frameData) heightData.set(frameData, newestColumn);
+      displacement.needsUpdate = true;
+    }
+    renderer.render(scene, camera);
+    if (props.running()) {
+      animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
+    }
+  };
+
+  const updateColormap = (name: ColormapName) => {
+    if (!paletteTexture) return;
+    const colors = colormap({ colormap: name, nshades: 256, format: "float" });
+    const data = paletteTexture.image.data as Uint8Array;
+    for (let index = 0; index < colors.length; index += 1) {
+      const offset = index * 4;
+      data[offset] = Math.round(colors[index][0] * 255);
+      data[offset + 1] = Math.round(colors[index][1] * 255);
+      data[offset + 2] = Math.round(colors[index][2] * 255);
+      data[offset + 3] = 255;
+    }
+    paletteTexture.needsUpdate = true;
+    if (renderer) renderer.render(scene, camera);
+  };
+
+  createEffect(
+    () => props.colormap(),
+    (name) => updateColormap(name),
+  );
+
+  createEffect(
+    () => props.running(),
+    (running) => {
+      cancelAnimationFrame(animationFrame);
+      if (running && renderer && !disposed)
+        animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
+    },
+  );
 
   onSettled(() => {
-    colormapPicker.options = colormapOptions;
-    colormapPicker.value = colormap();
+    scene = new THREE.Scene();
+    scene.background = null;
+    camera = new THREE.PerspectiveCamera(27, 1, 0.1, 300);
+    setFixedCamera();
 
-    const startSimulation = () => {
-      requestId += 1;
-      releaseMicrophone();
-      setError("");
-      setActiveSource("simulation");
-      setSource("simulation");
-      setStarting(false);
-      setRunning(true);
-      setStatus("Simulation running");
-    };
-
-    const startMicrophone = async () => {
-      const currentRequest = ++requestId;
-      setActiveSource(undefined);
-      releaseMicrophone();
-      setError("");
-      setSource("microphone");
-      setRunning(false);
-      setStarting(true);
-      if (!navigator.mediaDevices?.getUserMedia) {
-        setError(
-          "Microphone access is unavailable. Use a secure connection and a supported browser.",
-        );
-        setStarting(false);
-        setStatus("Microphone unavailable");
-        return;
-      }
-      setStatus("Requesting microphone access...");
-      let nextStream: MediaStream | undefined;
-      let nextAudioContext: AudioContext | undefined;
-      try {
-        nextStream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: false,
-            noiseSuppression: false,
-            autoGainControl: false,
-          },
-        });
-        if (disposed || currentRequest !== requestId) {
-          nextStream.getTracks().forEach((track) => track.stop());
-          return;
-        }
-        nextAudioContext = new AudioContext();
-        const nextAnalyser = nextAudioContext.createAnalyser();
-        nextAnalyser.fftSize = 2048;
-        nextAnalyser.smoothingTimeConstant = 0.72;
-        nextAudioContext
-          .createMediaStreamSource(nextStream)
-          .connect(nextAnalyser);
-        await nextAudioContext.resume();
-        if (disposed || currentRequest !== requestId) {
-          nextStream.getTracks().forEach((track) => track.stop());
-          await nextAudioContext.close();
-          return;
-        }
-        stream = nextStream;
-        audioContext = nextAudioContext;
-        analyser = nextAnalyser;
-        microphoneFrame = new Uint8Array(nextAnalyser.frequencyBinCount);
-        setActiveSource("microphone");
-        setStarting(false);
-        setRunning(true);
-        setStatus("Microphone running");
-      } catch (cause) {
-        nextStream?.getTracks().forEach((track) => track.stop());
-        if (nextAudioContext && nextAudioContext.state !== "closed") {
-          void nextAudioContext.close();
-        }
-        if (currentRequest === requestId) {
-          setStarting(false);
-          setRunning(false);
-          setStatus("Microphone unavailable");
-          setError(
-            cause instanceof Error
-              ? cause.message
-              : "Could not start microphone input.",
-          );
+    const geometry = new THREE.BufferGeometry();
+    const positions = new Float32Array(vertexCount * 3);
+    const uvs = new Float32Array(vertexCount * 2);
+    const indices: number[] = [];
+    for (let column = 0; column <= timeSamples; column += 1) {
+      const x = (column / timeSamples - 0.5) * 34;
+      for (let row = 0; row <= frequencySamples; row += 1) {
+        const vertex = column * vertexCountPerColumn + row;
+        const frequencyPosition = row / frequencySamples;
+        positions[vertex * 3] = x;
+        positions[vertex * 3 + 1] = (frequencyPosition - 0.5) * 18;
+        positions[vertex * 3 + 2] = 0;
+        uvs[vertex * 2] = column / timeSamples;
+        uvs[vertex * 2 + 1] = frequencyPosition;
+        if (column < timeSamples && row < frequencySamples) {
+          const a = vertex;
+          const b = vertex + vertexCountPerColumn;
+          indices.push(a, a + 1, b, a + 1, b + 1, b);
         }
       }
-    };
+    }
+    geometry.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geometry.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+    displacement = new THREE.BufferAttribute(heightData, 1);
+    displacement.setUsage(THREE.DynamicDrawUsage);
+    geometry.setAttribute("displacement", displacement);
+    geometry.setIndex(indices);
 
-    selectSource = (nextSource) => {
-      if (nextSource === "simulation") startSimulation();
-      else void startMicrophone();
-    };
+    paletteTexture = new THREE.DataTexture(
+      new Uint8Array(256 * 4),
+      256,
+      1,
+      THREE.RGBAFormat,
+    );
+    paletteTexture.magFilter = THREE.LinearFilter;
+    paletteTexture.minFilter = THREE.LinearFilter;
+    paletteTexture.generateMipmaps = false;
+    updateColormap(props.colormap());
 
-    const handleSourceChange = (event: Event) => {
-      const selected = (event as CustomEvent<{ value: string }>).detail.value;
-      if (selected === "simulation" || selected === "microphone") {
-        selectSource(selected);
-      }
-    };
+    const material = new THREE.ShaderMaterial({
+      uniforms: { uColorMap: { value: paletteTexture } },
+      vertexShader: `
+        attribute float displacement;
+        varying float vAmplitude;
+        varying vec2 vUv;
+        void main() {
+          vAmplitude = displacement;
+          vUv = uv;
+          vec3 lifted = position;
+          lifted.z += displacement * 4.2;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(lifted, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform sampler2D uColorMap;
+        varying float vAmplitude;
+        varying vec2 vUv;
+        void main() {
+          float level = clamp(vAmplitude, 0.0, 1.0);
+          vec3 color = texture2D(uColorMap, vec2(level, 0.5)).rgb;
+          float grid = 0.84 + 0.16 * step(0.985, fract(vUv.x * 180.0));
+          gl_FragColor = vec4(color * grid, 1.0);
+        }
+      `,
+      side: THREE.DoubleSide,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    scene.add(mesh);
 
-    const handleCameraModeChange = (event: Event) => {
-      const selected = (event as CustomEvent<{ value: string }>).detail.value;
-      if (selected === "fixed" || selected === "orbit") {
-        setCameraMode(selected);
-      }
-    };
+    try {
+      renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      renderer.setClearColor(0x000000, 0);
+      canvasHost.appendChild(renderer.domElement);
+      configureOrbitControls(props.orbitEnabled());
+    } catch {
+      props.onError("WebGL is unavailable in this browser.");
+      return;
+    }
 
-    const handleColormapChange = (event: Event) => {
-      const selected = (event as CustomEvent<{ value: string }>).detail.value;
-      if (
-        selected === "viridis" ||
-        selected === "jet" ||
-        selected === "hot" ||
-        selected === "cool" ||
-        selected === "rainbow"
-      ) {
-        colormapPicker.value = selected;
-        setColormap(selected);
-      }
-    };
-
-    const handleStreamClick = () => {
-      if (running() || starting()) stopStream();
-      else if (source() === "simulation") startSimulation();
-      else void startMicrophone();
-    };
-
-    sourcePicker.addEventListener("change", handleSourceChange);
-    cameraModePicker.addEventListener("change", handleCameraModeChange);
-    colormapPicker.addEventListener("change", handleColormapChange);
-    streamButton.addEventListener("click", handleStreamClick);
+    const resizeObserver = new ResizeObserver(() => {
+      if (!renderer) return;
+      const width = Math.max(canvasHost.clientWidth, 1);
+      const height = Math.max(canvasHost.clientHeight, 1);
+      renderer.setSize(width, height, false);
+      camera.aspect = width / height;
+      const fitHeight = 22;
+      if (!orbitControls) setFixedCamera();
+      mesh.scale.x = (fitHeight * camera.aspect * 0.90) / 34;
+      camera.updateProjectionMatrix();
+      renderer.render(scene, camera);
+    });
+    resizeObserver.observe(canvasHost);
+    renderer.render(scene, camera);
+    if (props.running()) {
+      animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
+    }
 
     return () => {
       disposed = true;
-      sourcePicker.removeEventListener("change", handleSourceChange);
-      cameraModePicker.removeEventListener("change", handleCameraModeChange);
-      colormapPicker.removeEventListener("change", handleColormapChange);
-      streamButton.removeEventListener("click", handleStreamClick);
-      stopStream();
+      cancelAnimationFrame(animationFrame);
+      resizeObserver.disconnect();
+      orbitControls?.dispose();
+      orbitControls = undefined;
+      geometry.dispose();
+      material.dispose();
+      paletteTexture?.dispose();
+      paletteTexture = undefined;
+      renderer?.dispose();
+      renderer?.domElement.remove();
+      renderer = undefined;
     };
   });
 
   return (
-    <section class="spectrogram">
-      <obc-card>
-        <div slot="title">{props.title} controls</div>
-
-        <div class="spectrogram-toolbar">
-          <div class="spectrogram-controls">
-            <obc-toggle-button-group
-              class="spectrogram-source"
-              prop:value={source()}
-              variant="regular"
-              hugText
-              aria-label="Audio source"
-              ref={sourcePicker}
-            >
-              <obc-toggle-button-option value="simulation">
-                Simulation
-              </obc-toggle-button-option>
-              <obc-toggle-button-option value="microphone">
-                Microphone
-              </obc-toggle-button-option>
-            </obc-toggle-button-group>
-            <obc-button
-              class="spectrogram-mic-button"
-              variant={running() || starting() ? "raised" : "normal"}
-              ref={streamButton}
-            >
-              {starting() ? "Cancel" : running() ? "Stop" : "Start"}
-            </obc-button>
-
-            <obc-dropdown-button ref={colormapPicker} />
-            <obc-toggle-button-group
-              class="spectrogram-source"
-              prop:value={cameraMode()}
-              variant="regular"
-              hugText
-              aria-label="Camera controls"
-              ref={cameraModePicker}
-            >
-              <obc-toggle-button-option value="fixed">
-                Fixed
-              </obc-toggle-button-option>
-              <obc-toggle-button-option value="orbit">
-                Orbit
-              </obc-toggle-button-option>
-            </obc-toggle-button-group>
-          </div>
-        </div>
-      </obc-card>
-      <br />
-      <obc-card class="spectrogram-display-card">
-        <div slot="title">
-          {props.title} - {status()}
-        </div>
-        {error() && (
-          <p class="spectrogram-error" role="alert">
-            {error()}
-          </p>
-        )}
-        <SpectrogramScene
-          running={running}
-          frameData={getFrameData}
-          colormap={colormap}
-          orbitEnabled={() => cameraMode() === "orbit"}
-          onError={setError}
-        />
-      </obc-card>
-    </section>
+    <div class="spectrogram-stage" ref={canvasHost} aria-label="Live audio spectrogram" />
   );
 }

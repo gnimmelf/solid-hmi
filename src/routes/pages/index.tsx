@@ -10,7 +10,7 @@ const pageEntries = Object.entries(
     const slug = file.replace(/^\.\//, '').replace(/\.tsx$/, '');
 
     return {
-      href: `/components/${slug}`,
+      href: `/pages/${slug}`,
       label: slug
         .split('-')
         .map((part) => part.charAt(0).toUpperCase() + part.slice(1))

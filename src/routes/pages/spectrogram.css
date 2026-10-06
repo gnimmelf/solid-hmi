@@ -1,0 +1,26 @@
+.spectrogram {
+	display: flex;
+	min-height: 0;
+	flex-direction: column;
+	flex: 1;
+	height: 100%;
+}
+
+.spectrogram-display-card {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-height: 0;
+}
+
+.spectrogram-controls,
+.spectrogram-source {
+	display: inline-flex;
+	align-items: center;
+    gap: .5rem;
+}
+
+.spectrogram-error {
+	background-color: var(--alert-warning-color);
+	color: var(--on-warning-active-color);
+}

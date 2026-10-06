@@ -33,39 +33,39 @@ declare module "virtual:file-routes" {
   /** The flat route manifest, in scan order. */
   const routes: readonly [
     {
-      path: "/*404";
-      page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
-      $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
-    },
-    {
       path: "/";
       page: true;
       $component: FileRouteLazyRef<typeof import("./src/routes/index")>;
       $$route?: undefined;
     },
     {
-      path: "/components/channel-api";
+      path: "/*404";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/channel-api")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/[...404]")>;
+      $$route: FileRouteEagerRef<typeof import("./src/routes/[...404]")>;
+    },
+    {
+      path: "/pages/channel-api";
+      page: true;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/channel-api")>;
       $$route?: undefined;
     },
     {
-      path: "/components/";
+      path: "/pages/";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/index")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/index")>;
       $$route?: undefined;
     },
     {
-      path: "/components/oicl-control-surface";
+      path: "/pages/oicl-control-surface";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/oicl-control-surface")>;
       $$route?: undefined;
     },
     {
-      path: "/components/spectrogram";
+      path: "/pages/spectrogram";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/spectrogram")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/spectrogram")>;
       $$route?: undefined;
     }
   ];
@@ -90,34 +90,34 @@ declare module "virtual:file-routes" {
       children?: undefined;
     },
     {
-      path: "/components/";
-      id: "/components/";
+      path: "/pages/";
+      id: "/pages/";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/index")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/index")>;
       $$route?: undefined;
       children?: undefined;
     },
     {
-      path: "/components/channel-api";
-      id: "/components/channel-api";
+      path: "/pages/channel-api";
+      id: "/pages/channel-api";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/channel-api")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/channel-api")>;
       $$route?: undefined;
       children?: undefined;
     },
     {
-      path: "/components/spectrogram";
-      id: "/components/spectrogram";
+      path: "/pages/spectrogram";
+      id: "/pages/spectrogram";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/spectrogram")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/spectrogram")>;
       $$route?: undefined;
       children?: undefined;
     },
     {
-      path: "/components/oicl-control-surface";
-      id: "/components/oicl-control-surface";
+      path: "/pages/oicl-control-surface";
+      id: "/pages/oicl-control-surface";
       page: true;
-      $component: FileRouteLazyRef<typeof import("./src/routes/components/oicl-control-surface")>;
+      $component: FileRouteLazyRef<typeof import("./src/routes/pages/oicl-control-surface")>;
       $$route?: undefined;
       children?: undefined;
     }

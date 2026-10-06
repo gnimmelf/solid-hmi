@@ -26,7 +26,7 @@ export default function App() {
           <section class="top-bar">
             <nav>
               <a href={paths()}>Home</a>
-              <a href={paths.components()}>Components</a>
+              <a href={paths.pages()}>Pages</a>
             </nav>
             <div class="tools">
               <obc-icon-button onClick={() =>cycleThemes()}>
