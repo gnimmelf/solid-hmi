@@ -1,4 +1,5 @@
 import * as v from "valibot";
+import { ThemeNames } from "../../lib/theme";
 
 export const ColormapNames = [
   "viridis",
@@ -19,8 +20,14 @@ export const SpectrogramStateSchema = v.strictObject({
   assetId: v.string(),
   running: v.boolean(),
   colormap: v.picklist(ColormapNames),
+  theme: v.picklist(ThemeNames),
+});
+
+export const ThemeChangeSchema = v.strictObject({
+  theme: v.picklist(ThemeNames),
 });
 
 export const SpectrogramChannelSchemas = {
   "spectrogram-controls": SpectrogramControlsSchema,
+  theme: ThemeChangeSchema,
 } as const;

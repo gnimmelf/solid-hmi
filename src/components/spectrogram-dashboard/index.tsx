@@ -1,6 +1,12 @@
 import { createSignal, onSettled, Show, untrack } from "solid-js";
 import * as v from "valibot";
 import { WindowChannelRegistry } from "../../lib/window-channel";
+import {
+  getTheme,
+  setTheme,
+  THEME_CHANGE_EVENT,
+  type ThemeName,
+} from "../../lib/theme";
 import Spectrogram from "../spectrogram";
 import {
   SpectrogramChannelSchemas,
@@ -21,7 +27,7 @@ export default function SpectrogramDashboard() {
     window.location.href,
     {
       schemas: SpectrogramChannelSchemas,
-      schemaVersion: "1",
+      schemaVersion: "2",
       state: {
         schema: SpectrogramStateSchema,
         getSnapshot: () =>
@@ -29,12 +35,14 @@ export default function SpectrogramDashboard() {
             assetId: assetId(),
             running: running(),
             colormap: colormap(),
+            theme: getTheme(),
           })),
         applySnapshot: (state) => {
           const snapshot = v.parse(SpectrogramStateSchema, state);
           setAssetId(snapshot.assetId);
           setRunning(snapshot.running);
           setColormap(snapshot.colormap);
+          setTheme(snapshot.theme, false);
         },
       },
     },
@@ -42,13 +50,22 @@ export default function SpectrogramDashboard() {
 
   onSettled(() => {
     const unsubscribe = channel.subscribe((message) => {
-      if (message.type !== "spectrogram-controls") return;
-      setRunning(message.data.running);
-      setColormap(message.data.colormap);
+      if (message.type === "spectrogram-controls") {
+        setRunning(message.data.running);
+        setColormap(message.data.colormap);
+      } else if (message.type === "theme") {
+        setTheme(message.data.theme, false);
+      }
     });
+    const handleThemeChange = (event: Event) => {
+      const theme = (event as CustomEvent<ThemeName>).detail;
+      void channel.broadcast("theme", { theme });
+    };
+    window.addEventListener(THEME_CHANGE_EVENT, handleThemeChange);
     const disconnect = channel.connect();
     return () => {
       unsubscribe();
+      window.removeEventListener(THEME_CHANGE_EVENT, handleThemeChange);
       disconnect();
     };
   });

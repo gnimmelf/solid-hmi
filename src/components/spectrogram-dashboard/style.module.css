@@ -29,17 +29,13 @@
   flex: 1;
   grid-template-columns: minmax(0, 3fr) minmax(15rem, 1fr);
   gap: var(--gap);
-
-  & section {
-    padding: var(--gap);
-  }
 }
 
 .overview {
   display: flex;
   min-height: 0;
   flex-direction: column;
-  gap: var(--gap);
+  gap: var(--gap);  
 }
 
 .widget,
