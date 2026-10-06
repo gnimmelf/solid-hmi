@@ -1,0 +1,22 @@
+.root {
+  --gap: var(--default-gap, 2rem);
+  min-width: 300px;
+}
+
+.card-content {
+  width: 100%;
+  display: flex;
+  padding: var(--gap, 1rem);
+}
+
+.card-content > * {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--gap);
+  align-content: center;
+}

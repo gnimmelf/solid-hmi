@@ -10,7 +10,7 @@ import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
 import "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
 import "@oicl/openbridge-webcomponents/dist/components/toggle-button-group/toggle-button-group.js";
 import "@oicl/openbridge-webcomponents/dist/components/toggle-button-option/toggle-button-option.js";
-import "./spectrogram.css";
+import styles from "./spectrogram.module.css";
 
 type AudioSource = "simulation" | "microphone";
 type ColormapName = "viridis" | "jet" | "hot" | "cool" | "rainbow";
@@ -239,14 +239,14 @@ export default function SpectrogramPage() {
   });
 
   return (
-    <main class="spectrogram">
+    <main class={styles.spectrogram}>
       <Title>{title}</Title>
       <obc-card>
         <div slot="title">{title} Driver</div>
 
-        <div class="spectrogram-controls">
+        <div class={styles["spectrogram-controls"]}>
           <obc-toggle-button-group
-            class="spectrogram-source"
+            class={styles["spectrogram-source"]}
             prop:value={source()}
             variant="regular"
             hugText
@@ -261,7 +261,7 @@ export default function SpectrogramPage() {
             </obc-toggle-button-option>
           </obc-toggle-button-group>
           <obc-button
-            class="spectrogram-mic-button"
+            class={styles["spectrogram-mic-button"]}
             variant={running() || starting() ? "raised" : "normal"}
             ref={streamButton}
           >
@@ -270,7 +270,7 @@ export default function SpectrogramPage() {
 
           <obc-dropdown-button ref={colormapPicker} />
           <obc-toggle-button-group
-            class="spectrogram-source"
+            class={styles["spectrogram-source"]}
             prop:value={cameraMode()}
             variant="regular"
             hugText
@@ -287,12 +287,12 @@ export default function SpectrogramPage() {
         </div>
       </obc-card>
       <br />
-      <obc-card class="spectrogram-display-card">
+      <obc-card class={styles["spectrogram-display-card"]}>
         <div slot="title">
           {title} - {status()}
         </div>
         {error() && (
-          <p class="spectrogram-error" role="alert">
+          <p class={styles["spectrogram-error"]} role="alert">
             {error()}
           </p>
         )}

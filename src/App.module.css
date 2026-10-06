@@ -1,0 +1,12 @@
+.top-bar,
+.top-bar nav {
+  display: flex;
+  gap: var(--default-gap);
+  align-items: center;
+}
+
+.top-bar {
+  justify-content: space-between;
+  padding-top: var(--default-gap);
+  padding-bottom: var(--default-gap);
+}

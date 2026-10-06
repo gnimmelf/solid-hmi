@@ -36,6 +36,10 @@ function inlineImportedCss(): Plugin {
         return undefined;
       }
 
+      if (source.includes('?custom-element-module') || source.includes('?inline')) {
+        return undefined;
+      }
+
       const resolved = await this.resolve(source, importer, { skipSelf: true });
 
       if (!resolved || !/\.css(?:$|\?)/.test(resolved.id) || resolved.id === openBridgeStylesheet) {
@@ -53,8 +57,27 @@ function inlineImportedCss(): Plugin {
         return undefined;
       }
 
-      const css = JSON.stringify(readFileSync(cssPath.split('?')[0], 'utf8'));
       const key = JSON.stringify(cssPath);
+
+      if (cssPath.split('?')[0].endsWith('.module.css')) {
+        const modulePath = JSON.stringify(`${cssPath}?custom-element-module`);
+        const inlinePath = JSON.stringify(`${cssPath}?inline`);
+
+        return `
+          import classes from ${modulePath};
+          import css from ${inlinePath};
+          const key = ${key};
+          if (typeof document !== 'undefined' && !Array.from(document.querySelectorAll('style[data-custom-element-css]')).some((style) => style.dataset.customElementCss === key)) {
+            const style = document.createElement('style');
+            style.dataset.customElementCss = key;
+            style.textContent = css;
+            document.head.append(style);
+          }
+          export default classes;
+        `;
+      }
+
+      const css = JSON.stringify(readFileSync(cssPath.split('?')[0], 'utf8'));
 
       return `
         const key = ${key};

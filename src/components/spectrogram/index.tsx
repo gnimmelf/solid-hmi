@@ -2,7 +2,7 @@ import { createEffect, onSettled, type Accessor } from "solid-js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import colormap from "colormap";
-import "./style.css";
+import styles from "./style.module.css";
 
 type ColormapName = "viridis" | "jet" | "hot" | "cool" | "rainbow";
 
@@ -246,6 +246,6 @@ export default function Spectrogram(props: SpectrogramProps) {
   });
 
   return (
-    <div class="spectrogram-stage" ref={canvasHost} aria-label="Live audio spectrogram" />
+    <div class={styles["spectrogram-stage"]} ref={canvasHost} aria-label="Live audio spectrogram" />
   );
 }

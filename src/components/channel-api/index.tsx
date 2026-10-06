@@ -5,7 +5,7 @@ import {
   WindowChannelRegistry,
   type WindowChannelMessage,
 } from "../../lib/window-channel";
-import "./style.css";
+import styles from "./style.module.css";
 
 export default function ChannelApi(props: { title: string }) {
   const channel = new WindowChannelRegistry("app_window_sync");
@@ -30,16 +30,16 @@ export default function ChannelApi(props: { title: string }) {
   });
 
   return (
-    <obc-card>
+    <obc-card class={styles.root}>
       <div slot="title">
         {props.title} - {channel.windowId}
       </div>
 
-      <div class="card-content">
+      <div class={styles["card-content"]}>
 
-        <section class="controls">
+        <section class={styles.controls}>
           <Show when={channel.isRoot}>
-            <div class="controls">
+            <div class={styles.controls}>
               <obc-button
                 onClick={() => {
                   if (!channel.openChild()) {
@@ -55,7 +55,7 @@ export default function ChannelApi(props: { title: string }) {
             </div>
           </Show>
 
-          <div class="controls">
+          <div class={styles.controls}>
             <obc-button
               onClick={() => channel.broadcast("message", { propA: "value" })}
             >
@@ -82,7 +82,7 @@ export default function ChannelApi(props: { title: string }) {
           </div>
         </section>
 
-        <section class="messages">
+        <section class={styles.messages}>
           <div>Received messages</div>
           <For each={messages()}>
             {(message) => <div>{JSON.stringify(message)}</div>}

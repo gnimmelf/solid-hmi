@@ -1,6 +1,6 @@
 import '@oicl/openbridge-webcomponents/dist/components/card/card.js';
 import '@oicl/openbridge-webcomponents/dist/components/button/button.js';
-import './style.css';
+import styles from './style.module.css';
 
 
 export default function OiclControlSurface(props: {
@@ -18,9 +18,9 @@ export default function OiclControlSurface(props: {
             Style tests:
           </p>        
             <ul>
-              <li class="alert alarm">--alert-alarm-color</li>
-              <li class="alert warning">--alert-warning-color</li>
-              <li class="alert caution">--alert-caution-color</li>
+              <li class={`${styles.alert} ${styles.alarm}`}>--alert-alarm-color</li>
+              <li class={`${styles.alert} ${styles.warning}`}>--alert-warning-color</li>
+              <li class={`${styles.alert} ${styles.caution}`}>--alert-caution-color</li>
             </ul>
         </div>
       </obc-card>

@@ -1,5 +1,5 @@
 :root {
-  --gap: 1rem;
+  --default-gap: 1rem;
   color-scheme: light;
   background: var(--container-backdrop-color);
   color: var(--element-active-color);  
@@ -10,28 +10,20 @@
   color-scheme: dark;
 }
 
-a {
-  color: var(--element-active-color); 
-}
-
-section.top-bar ,nav {
-  display: flex;
-  gap: var(--gap);  
-  align-items: center;
-}
-
-section.top-bar {
-  justify-content: space-between ;
-  padding-top: var(--gap);
-  padding-bottom: var(--gap);
+html * {
+  box-sizing: border-box;
 }
 
 body {
   display: flex;
   flex-direction: column;
-  height: calc(100dvh - var(--gap) - var(--gap));
+  height: calc(100dvh - var(--default-gap) - var(--default-gap));
   box-sizing: border-box;
-  margin: var(--gap);
+  margin: var(--default-gap);
   background: var(--container-backdrop-color);
+  color: var(--element-active-color);
+}
+
+a {
   color: var(--element-active-color);
 }
