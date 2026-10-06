@@ -13,7 +13,6 @@ import {
   SpectrogramStateSchema,
   type ColormapName,
 } from "../spectrogram/channel";
-import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
 import styles from "./style.module.css";
 
 export default function SpectrogramWorkspace() {
@@ -81,7 +80,7 @@ export default function SpectrogramWorkspace() {
   };
 
   return (
-    <div class={styles.workspace}>
+    <div class={styles.root}>
       <header class={styles.header}>
         <div>
           <span class={styles.eyebrow}>Dedicated analysis · L3</span>
@@ -97,8 +96,8 @@ export default function SpectrogramWorkspace() {
         {(error) => <p class={styles.error} role="alert">{error()}</p>}
       </Show>
 
-      <obc-card class={styles.surface}>
-        <div slot="title">{assetId()} · detailed spectrum</div>
+      <section class={styles.surface} aria-label="Detailed spectrum">
+        <h2>{assetId()} · detailed spectrum</h2>
         <Spectrogram
           attentionLevel={3}
           assetId={assetId()}
@@ -111,7 +110,7 @@ export default function SpectrogramWorkspace() {
             broadcastControls(running(), nextColormap)
           }
         />
-      </obc-card>
+      </section>
 
       <footer class={styles.footer}>
         <span>L3 isolates detailed monitoring and display controls.</span>
