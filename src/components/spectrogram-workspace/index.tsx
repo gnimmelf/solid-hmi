@@ -1,33 +1,67 @@
-import { createSignal, onSettled, Show } from "solid-js";
+import { createSignal, onSettled, Show, untrack } from "solid-js";
 import * as v from "valibot";
 import { WindowChannelRegistry } from "../../lib/window-channel";
 import Spectrogram from "../spectrogram";
+import {
+  SpectrogramChannelSchemas,
+  SpectrogramStateSchema,
+  type ColormapName,
+} from "../spectrogram/channel";
 import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
 import styles from "./style.module.css";
-
-const AssetStateSchema = v.strictObject({ assetId: v.string() });
 
 export default function SpectrogramWorkspace() {
   const url = new URL(window.location.href);
   const [assetId, setAssetId] = createSignal(
     url.searchParams.get("assetId") ?? "hydrophone-01",
   );
+  const [running, setRunning] = createSignal(false);
+  const [colormap, setColormap] = createSignal<ColormapName>("viridis");
   const channel = new WindowChannelRegistry(
     "spectrogram_c2_demo",
     window.location.href,
     {
+      schemas: SpectrogramChannelSchemas,
       schemaVersion: "1",
       state: {
-        schema: AssetStateSchema,
-        getSnapshot: () => ({ assetId: assetId() }),
+        schema: SpectrogramStateSchema,
+        getSnapshot: () =>
+          untrack(() => ({
+            assetId: assetId(),
+            running: running(),
+            colormap: colormap(),
+          })),
         applySnapshot: (state) => {
-          setAssetId(v.parse(AssetStateSchema, state).assetId);
+          const snapshot = v.parse(SpectrogramStateSchema, state);
+          setAssetId(snapshot.assetId);
+          setRunning(snapshot.running);
+          setColormap(snapshot.colormap);
         },
       },
     },
   );
 
-  onSettled(() => channel.connect());
+  onSettled(() => {
+    const unsubscribe = channel.subscribe((message) => {
+      if (message.type !== "spectrogram-controls") return;
+      setRunning(message.data.running);
+      setColormap(message.data.colormap);
+    });
+    const disconnect = channel.connect();
+    return () => {
+      unsubscribe();
+      disconnect();
+    };
+  });
+
+  const broadcastControls = (nextRunning: boolean, nextColormap: ColormapName) => {
+    setRunning(nextRunning);
+    setColormap(nextColormap);
+    void channel.broadcast("spectrogram-controls", {
+      running: nextRunning,
+      colormap: nextColormap,
+    });
+  };
 
   return (
     <div class={styles.workspace}>
@@ -48,7 +82,18 @@ export default function SpectrogramWorkspace() {
 
       <obc-card class={styles.surface}>
         <div slot="title">{assetId()} · detailed spectrum</div>
-        <Spectrogram attentionLevel={3} assetId={assetId()} />
+        <Spectrogram
+          attentionLevel={3}
+          assetId={assetId()}
+          running={running}
+          colormap={colormap}
+          onRunningChange={(nextRunning) =>
+            broadcastControls(nextRunning, colormap())
+          }
+          onColormapChange={(nextColormap) =>
+            broadcastControls(running(), nextColormap)
+          }
+        />
       </obc-card>
 
       <footer class={styles.footer}>

@@ -1,32 +1,66 @@
-import { createSignal, onSettled, Show } from "solid-js";
+import { createSignal, onSettled, Show, untrack } from "solid-js";
 import * as v from "valibot";
 import { WindowChannelRegistry } from "../../lib/window-channel";
 import Spectrogram from "../spectrogram";
+import {
+  SpectrogramChannelSchemas,
+  SpectrogramStateSchema,
+  type ColormapName,
+} from "../spectrogram/channel";
 import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
 import styles from "./style.module.css";
-
-const AssetStateSchema = v.strictObject({ assetId: v.string() });
 
 export default function SpectrogramDashboard() {
   const [attentionLevel, setAttentionLevel] = createSignal<1 | 2>(1);
   const [assetId, setAssetId] = createSignal("hydrophone-01");
+  const [running, setRunning] = createSignal(true);
+  const [colormap, setColormap] = createSignal<ColormapName>("viridis");
   const [popupError, setPopupError] = createSignal("");
   const channel = new WindowChannelRegistry(
     "spectrogram_c2_demo",
     window.location.href,
     {
+      schemas: SpectrogramChannelSchemas,
       schemaVersion: "1",
       state: {
-        schema: AssetStateSchema,
-        getSnapshot: () => ({ assetId: assetId() }),
+        schema: SpectrogramStateSchema,
+        getSnapshot: () =>
+          untrack(() => ({
+            assetId: assetId(),
+            running: running(),
+            colormap: colormap(),
+          })),
         applySnapshot: (state) => {
-          setAssetId(v.parse(AssetStateSchema, state).assetId);
+          const snapshot = v.parse(SpectrogramStateSchema, state);
+          setAssetId(snapshot.assetId);
+          setRunning(snapshot.running);
+          setColormap(snapshot.colormap);
         },
       },
     },
   );
 
-  onSettled(() => channel.connect());
+  onSettled(() => {
+    const unsubscribe = channel.subscribe((message) => {
+      if (message.type !== "spectrogram-controls") return;
+      setRunning(message.data.running);
+      setColormap(message.data.colormap);
+    });
+    const disconnect = channel.connect();
+    return () => {
+      unsubscribe();
+      disconnect();
+    };
+  });
+
+  const broadcastControls = (nextRunning: boolean, nextColormap: ColormapName) => {
+    setRunning(nextRunning);
+    setColormap(nextColormap);
+    void channel.broadcast("spectrogram-controls", {
+      running: nextRunning,
+      colormap: nextColormap,
+    });
+  };
 
   const castToL3 = () => {
     const target = new URL("/pages/spectrogram-detail", window.location.origin);
@@ -68,9 +102,27 @@ export default function SpectrogramDashboard() {
             </div>
             <Show
               when={attentionLevel() === 1}
-              fallback={<Spectrogram attentionLevel={2} assetId={assetId()} />}
+              fallback={
+                <Spectrogram
+                  attentionLevel={2}
+                  assetId={assetId()}
+                  running={running}
+                  colormap={colormap}
+                  onRunningChange={(nextRunning) =>
+                    broadcastControls(nextRunning, colormap())
+                  }
+                  onColormapChange={(nextColormap) =>
+                    broadcastControls(running(), nextColormap)
+                  }
+                />
+              }
             >
-              <Spectrogram attentionLevel={1} assetId={assetId()} />
+              <Spectrogram
+                attentionLevel={1}
+                assetId={assetId()}
+                running={running}
+                colormap={colormap}
+              />
             </Show>
           </section>
 

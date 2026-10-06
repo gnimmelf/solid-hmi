@@ -1,4 +1,4 @@
-import { createEffect, onSettled, type Accessor } from "solid-js";
+import { createEffect, onSettled, untrack, type Accessor } from "solid-js";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
 import colormap from "colormap";
@@ -15,6 +15,11 @@ type SpectrogramProps = {
 };
 
 export default function Spectrogram(props: SpectrogramProps) {
+  const running = untrack(() => props.running);
+  const frameData = untrack(() => props.frameData);
+  const selectedColormap = untrack(() => props.colormap);
+  const orbitEnabled = untrack(() => props.orbitEnabled);
+  const onError = untrack(() => props.onError);
   let canvasHost!: HTMLDivElement;
   let renderer: THREE.WebGLRenderer | undefined;
   let animationFrame = 0;
@@ -74,7 +79,7 @@ export default function Spectrogram(props: SpectrogramProps) {
   };
 
   createEffect(
-    () => props.orbitEnabled(),
+    () => orbitEnabled(),
     (enabled) => configureOrbitControls(enabled),
   );
 
@@ -83,15 +88,15 @@ export default function Spectrogram(props: SpectrogramProps) {
     camera: THREE.PerspectiveCamera,
   ) => {
     if (disposed || !renderer) return;
-    if (props.running() && displacement) {
+    if (running() && displacement) {
       heightData.copyWithin(0, vertexCountPerColumn, vertexCount);
       const newestColumn = timeSamples * vertexCountPerColumn;
-      const frameData = props.frameData();
-      if (frameData) heightData.set(frameData, newestColumn);
+      const nextFrame = frameData();
+      if (nextFrame) heightData.set(nextFrame, newestColumn);
       displacement.needsUpdate = true;
     }
     renderer.render(scene, camera);
-    if (props.running()) {
+    if (running()) {
       animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
     }
   };
@@ -112,12 +117,12 @@ export default function Spectrogram(props: SpectrogramProps) {
   };
 
   createEffect(
-    () => props.colormap(),
+    () => selectedColormap(),
     (name) => updateColormap(name),
   );
 
   createEffect(
-    () => props.running(),
+    () => running(),
     (running) => {
       cancelAnimationFrame(animationFrame);
       if (running && renderer && !disposed)
@@ -168,7 +173,7 @@ export default function Spectrogram(props: SpectrogramProps) {
     paletteTexture.magFilter = THREE.LinearFilter;
     paletteTexture.minFilter = THREE.LinearFilter;
     paletteTexture.generateMipmaps = false;
-    updateColormap(props.colormap());
+    updateColormap(selectedColormap());
 
     const material = new THREE.ShaderMaterial({
       uniforms: { uColorMap: { value: paletteTexture } },
@@ -205,9 +210,9 @@ export default function Spectrogram(props: SpectrogramProps) {
       renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       renderer.setClearColor(0x000000, 0);
       canvasHost.appendChild(renderer.domElement);
-      configureOrbitControls(props.orbitEnabled());
+      configureOrbitControls(orbitEnabled());
     } catch {
-      props.onError("WebGL is unavailable in this browser.");
+      onError("WebGL is unavailable in this browser.");
       return;
     }
 
@@ -225,7 +230,7 @@ export default function Spectrogram(props: SpectrogramProps) {
     });
     resizeObserver.observe(canvasHost);
     renderer.render(scene, camera);
-    if (props.running()) {
+    if (running()) {
       animationFrame = requestAnimationFrame(() => renderFrame(scene, camera));
     }
 
