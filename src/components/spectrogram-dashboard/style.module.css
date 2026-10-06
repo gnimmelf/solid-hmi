@@ -1,0 +1,126 @@
+.root {
+  display: flex;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.header {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  border-bottom: 1px solid var(--border-outline-color);
+  padding-bottom: 0.75rem;
+}
+
+.header h1,
+.widget h2,
+.context h2 {
+  margin: 0;
+  letter-spacing: 0;
+}
+
+.layout {
+  display: grid;
+  min-height: 0;
+  flex: 1;
+  grid-template-columns: minmax(0, 3fr) minmax(15rem, 1fr);
+  gap: 1rem;
+}
+
+.overview {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.widget,
+.context {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  justify-content: flex-start;
+  border: 1px solid var(--border-outline-color);
+  background: var(--container-background-color);
+  padding: 1rem;
+}
+
+.widget {
+  min-height: 26rem;
+  flex: 1;
+  gap: 0.75rem;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.summary {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin: 0;
+  border-top: 1px solid var(--border-outline-color);
+  border-bottom: 1px solid var(--border-outline-color);
+}
+
+.summary div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem;
+}
+
+.summary div + div {
+  border-left: 1px solid var(--border-outline-color);
+}
+
+.summary dt,
+.context > span,
+.details dt {
+  color: var(--element-neutral-color);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+}
+
+.summary dd,
+.details dd {
+  margin: 0;
+}
+
+.context {
+  gap: 0.75rem;
+}
+
+.context p {
+  margin: 0;
+  line-height: 1.5;
+}
+
+.details {
+  width: 100%;
+  margin: 0;
+}
+
+.details div {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  border-top: 1px solid var(--border-outline-color);
+  padding: 0.65rem 0;
+}
+
+.details dd {
+  text-align: right;
+}
+
+.error {
+  margin: 0;
+  padding: 0.75rem;
+  background: var(--alert-warning-color);
+  color: var(--on-warning-active-color);
+}

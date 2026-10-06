@@ -1,0 +1,43 @@
+.spectrogram {
+  display: flex;
+  width: 100%;
+  min-height: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.controls,
+.source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.heading {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.heading span {
+  color: var(--element-neutral-color);
+}
+
+.scene {
+  display: flex;
+  width: 100%;
+  min-height: 12rem;
+  flex: 1;
+}
+
+.spectrogram[data-attention-level="1"] .scene {
+  min-height: 9rem;
+}
+
+.error {
+  margin: 0;
+  background-color: var(--alert-warning-color);
+  color: var(--on-warning-active-color);
+}
