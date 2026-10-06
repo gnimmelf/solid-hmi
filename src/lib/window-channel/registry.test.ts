@@ -33,6 +33,21 @@ class MemoryBroadcastChannel extends EventTarget {
   }
 }
 
+class MemoryLockManager {
+  private readonly held = new Set<string>();
+
+  request(
+    name: string,
+    _options: { ifAvailable: true },
+    callback: (lock: { name: string } | null) => Promise<boolean>,
+  ) {
+    if (this.held.has(name)) return callback(null);
+
+    this.held.add(name);
+    return callback({ name }).finally(() => this.held.delete(name));
+  }
+}
+
 const schemas = {
   volume: v.strictObject({ value: v.number() }),
 };
@@ -72,6 +87,7 @@ describe("WindowChannelRegistry", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     MemoryBroadcastChannel.reset();
+    sessionStorage.clear();
     vi.stubGlobal("BroadcastChannel", MemoryBroadcastChannel);
   });
 
@@ -107,6 +123,62 @@ describe("WindowChannelRegistry", () => {
     expect(() =>
       root.broadcast("volume", { value: "invalid" } as never),
     ).toThrow(TypeError);
+  });
+
+  it("reuses a root ID after refresh and rotates it when another root is live", async () => {
+    const locks = new MemoryLockManager();
+    vi.stubGlobal("navigator", { locks });
+
+    const original = createRegistry("https://example.test/", { volume: 0 });
+    connected.push(original);
+    original.connect();
+    await deliverMessages();
+    const persistedRootId = original.rootId;
+
+    original.disconnect();
+    await deliverMessages();
+
+    const refreshed = createRegistry("https://example.test/", { volume: 0 });
+    connected.push(refreshed);
+    expect(refreshed.rootId).toBe(persistedRootId);
+    refreshed.connect();
+    await deliverMessages();
+
+    const duplicate = createRegistry("https://example.test/", { volume: 0 });
+    connected.push(duplicate);
+    expect(duplicate.rootId).toBe(persistedRootId);
+    duplicate.connect();
+    await deliverMessages();
+    expect(duplicate.rootId).toBe(persistedRootId);
+
+    await vi.advanceTimersByTimeAsync(250);
+    await deliverMessages();
+
+    expect(duplicate.rootId).not.toBe(persistedRootId);
+    expect(duplicate.windowId).toBe(duplicate.rootId);
+  });
+
+  it("keeps the root ID when the previous instance disconnects during the lock grace period", async () => {
+    const locks = new MemoryLockManager();
+    vi.stubGlobal("navigator", { locks });
+
+    const previous = createRegistry("https://example.test/", { volume: 0 });
+    connected.push(previous);
+    previous.connect();
+    await deliverMessages();
+    const persistedRootId = previous.rootId;
+
+    const replacement = createRegistry("https://example.test/", { volume: 0 });
+    connected.push(replacement);
+    replacement.connect();
+    await deliverMessages();
+
+    previous.disconnect();
+    await vi.advanceTimersByTimeAsync(250);
+    await deliverMessages();
+
+    expect(replacement.rootId).toBe(persistedRootId);
+    expect(replacement.windowId).toBe(persistedRootId);
   });
 
   it("does not let an old document unregister a replacement session", async () => {

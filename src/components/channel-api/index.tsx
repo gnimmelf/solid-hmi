@@ -57,14 +57,13 @@ export default function ChannelApi(props: { title: string }) {
   return (
     <obc-card class={styles.root}>
       <div slot="title">
-        {props.title} -
-        <Show when={channel.isRoot}> ROOT - </Show>
-        {channel.windowId} 
+        {props.title} - {channel.isRoot ? "Root window" : "Child window"} -
+        Window ID: {channel.windowId}
       </div>
 
       <div class={styles["card-content"]}>
-
         <section class={styles.controls}>
+          <div class={styles["section-title"]}>Window channel controls</div>
           <Show when={channel.isRoot}>
             <div class={styles.controls}>
               <obc-button
@@ -76,45 +75,46 @@ export default function ChannelApi(props: { title: string }) {
                   }
                 }}
               >
-                Launch other Window
+                Open child HMI window
               </obc-button>
-              <div>Sub window count: {channel.peers().length}</div>
+              <div>Live child window peers: {channel.peers().length}</div>
               <For each={channel.peers()}>
                 {(peerId) => (
                   <obc-button
                     onClick={() =>
                       channel.sendDirect(peerId, "message", {
-                        propA: `Direct message from root to ${peerId}`,
+                        propA: `Addressed message from root window to ${peerId}`,
                       })
                     }
                   >
-                    Direct message to {peerId}
+                    Send addressed message to {peerId}
                   </obc-button>
                 )}
               </For>
             </div>
           </Show>
 
-          <Show when={!channel.isRoot}>
+          <Show when={!channel.isRoot}>            
             <obc-button
               onClick={() =>
                 channel.sendDirect(channel.rootId, "message", {
-                  propA: "Direct message from child to root",
+                  propA: "Addressed message from child window to root window",
                 })
               }
             >
-              Direct message to root
+              Send addressed message to root window
             </obc-button>
+            <div>Root window ID: {channel.rootId}</div>
           </Show>
 
           <div class={styles.controls}>
             <obc-button
               onClick={() => channel.broadcast("message", { propA: "value" })}
             >
-              Broadcast test message
+              Broadcast application message
             </obc-button>
             <div>
-              <label for="volume">Synced Volume Control:</label>
+              <label for="volume">Synchronized presentation volume:</label>
               <br />
               <input
                 type="range"
@@ -135,9 +135,15 @@ export default function ChannelApi(props: { title: string }) {
         </section>
 
         <section class={styles.messages}>
-          <div>Received messages</div>
+          <div class={styles["section-title"]}>
+            Received application messages
+          </div>
           <For each={messages()}>
-            {(message) => <div>{JSON.stringify(message)}</div>}
+            {(message) => (
+              <div class={styles["recieved-message"]}>
+                {JSON.stringify(message)}
+              </div>
+            )}
           </For>
         </section>
       </div>

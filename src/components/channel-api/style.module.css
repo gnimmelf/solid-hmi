@@ -20,3 +20,16 @@
   gap: var(--gap);
   align-content: center;
 }
+
+.section-title {
+  margin-bottom: 1rem;
+  font-size: large;
+  font-weight: bolder;
+}
+
+.recieved-message {
+  border-bottom: 1px solid;
+  border-bottom-color: var(--border-outline-color);
+  padding-bottom: var(--gap);
+  margin-bottom: var(--gap);
+}

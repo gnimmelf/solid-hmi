@@ -27,13 +27,13 @@ import type {
 
 const ROOT_ID_PARAM = "rootId";
 const WINDOW_ID_PARAM = "uuid";
+const ROOT_ID_STORAGE_PREFIX = "window-channel:root-id:";
+const ROOT_LOCK_GRACE_MS = 250;
 
 export class WindowChannelRegistry<
   TSchemas extends WindowChannelSchemas = WindowChannelSchemas,
 > {
-  readonly windowId: string;
   readonly sessionId = crypto.randomUUID();
-  readonly rootId: string;
   readonly isRoot: boolean;
   readonly peers: Accessor<readonly string[]>;
   readonly coordinatorId: Accessor<string>;
@@ -48,6 +48,9 @@ export class WindowChannelRegistry<
   private readonly peerTimeoutMs: number;
   private readonly defaultAckTimeoutMs: number;
   private readonly defaultAckRetries: number;
+  private readonly rootIdStorageKey: string;
+  private readonly rootIdAccessor: Accessor<string>;
+  private readonly windowIdAccessor: Accessor<string>;
   private readonly listeners = new Set<
     (message: WindowChannelMessageFor<TSchemas>) => void
   >();
@@ -59,8 +62,11 @@ export class WindowChannelRegistry<
   private readonly setCoordinatorId: (value: string) => string;
   private readonly setReady: (value: boolean) => boolean;
   private readonly setError: (value: string | undefined) => string | undefined;
+  private readonly setRootId: (value: string) => string;
+  private readonly setWindowId: (value: string) => string;
   private channel?: BroadcastChannel;
   private heartbeatTimer?: ReturnType<typeof setInterval>;
+  private releaseRootLock?: () => void;
   private connected = false;
 
   constructor(
@@ -73,8 +79,16 @@ export class WindowChannelRegistry<
 
     this.channelName = channelName;
     this.isRoot = rootId === null;
-    this.rootId = rootId ?? crypto.randomUUID();
-    this.windowId = url.searchParams.get(WINDOW_ID_PARAM) ?? this.rootId;
+    this.rootIdStorageKey = `${ROOT_ID_STORAGE_PREFIX}${channelName}`;
+    const initialRootId = rootId ?? this.getStoredRootId() ?? crypto.randomUUID();
+    const initialWindowId = url.searchParams.get(WINDOW_ID_PARAM) ?? initialRootId;
+    const [rootIdAccessor, setRootId] = createSignal(initialRootId);
+    const [windowIdAccessor, setWindowId] = createSignal(initialWindowId);
+    this.rootIdAccessor = rootIdAccessor;
+    this.setRootId = setRootId;
+    this.windowIdAccessor = windowIdAccessor;
+    this.setWindowId = setWindowId;
+    if (this.isRoot) this.storeRootId(initialRootId);
     this.schemas = options.schemas ?? {};
     this.schemaVersion = options.schemaVersion ?? "1";
     this.state = options.state;
@@ -84,7 +98,7 @@ export class WindowChannelRegistry<
     this.defaultAckRetries = options.ackRetries ?? 2;
 
     const [peers, setPeers] = createSignal<string[]>([]);
-    const [coordinatorId, setCoordinatorId] = createSignal(this.rootId);
+    const [coordinatorId, setCoordinatorId] = createSignal(initialRootId);
     const [ready, setReady] = createSignal(this.isRoot || !this.state);
     const [error, setError] = createSignal<string>();
     this.peers = peers;
@@ -97,11 +111,30 @@ export class WindowChannelRegistry<
     this.setError = setError;
   }
 
+  get rootId() {
+    return this.rootIdAccessor();
+  }
+
+  get windowId() {
+    return this.windowIdAccessor();
+  }
+
   connect = () => {
     if (this.connected) return this.disconnect;
 
     this.connected = true;
     this.setError(undefined);
+    if (this.isRoot && navigator.locks) {
+      void this.claimRootIdentity();
+    } else {
+      this.startTransport();
+    }
+    return this.disconnect;
+  };
+
+  private startTransport() {
+    if (!this.connected || this.channel) return;
+
     this.channel = new BroadcastChannel(this.channelName);
     this.channel.addEventListener("message", this.handleBroadcastMessage);
     window.addEventListener("message", this.handleWindowMessage);
@@ -110,14 +143,15 @@ export class WindowChannelRegistry<
     this.sendRegistryMessage(RegistryType.Register, { schemaVersion: this.schemaVersion });
     this.sendHeartbeat();
     this.heartbeatTimer = setInterval(this.sendHeartbeat, this.heartbeatIntervalMs);
-    return this.disconnect;
-  };
+  }
 
   disconnect = () => {
     if (!this.connected) return;
 
-    this.sendRegistryMessage(RegistryType.Unregister, {});
+    if (this.channel) this.sendRegistryMessage(RegistryType.Unregister, {});
     this.connected = false;
+    this.releaseRootLock?.();
+    this.releaseRootLock = undefined;
     window.removeEventListener("pagehide", this.disconnect);
     window.removeEventListener("message", this.handleWindowMessage);
     if (this.heartbeatTimer) clearInterval(this.heartbeatTimer);
@@ -134,6 +168,62 @@ export class WindowChannelRegistry<
     this.peerRecords.clear();
     this.setPeers([]);
   };
+
+  private async claimRootIdentity() {
+    try {
+      let graceAttemptAvailable = true;
+      while (this.connected) {
+        const claimed = await navigator.locks.request(
+          `${ROOT_ID_STORAGE_PREFIX}${this.channelName}:${this.rootId}`,
+          { ifAvailable: true },
+          async (lock) => {
+            if (!lock) return false;
+            if (!this.connected) return true;
+
+            this.startTransport();
+            await new Promise<void>((resolve) => {
+              this.releaseRootLock = resolve;
+            });
+            return true;
+          },
+        );
+        if (claimed || !this.connected) return;
+
+        if (graceAttemptAvailable) {
+          graceAttemptAvailable = false;
+          await new Promise((resolve) => setTimeout(resolve, ROOT_LOCK_GRACE_MS));
+          continue;
+        }
+
+        const rootId = crypto.randomUUID();
+        this.setRootId(rootId);
+        this.setWindowId(rootId);
+        this.setCoordinatorId(rootId);
+        this.storeRootId(rootId);
+      }
+    } catch (error) {
+      this.setError(
+        error instanceof Error ? error.message : "Unable to claim root identity",
+      );
+      this.disconnect();
+    }
+  }
+
+  private getStoredRootId() {
+    try {
+      return sessionStorage.getItem(this.rootIdStorageKey);
+    } catch {
+      return null;
+    }
+  }
+
+  private storeRootId(rootId: string) {
+    try {
+      sessionStorage.setItem(this.rootIdStorageKey, rootId);
+    } catch {
+      // Storage can be unavailable in restricted browsing contexts.
+    }
+  }
 
   openChild(url = window.location.href) {
     const childUrl = new URL(url);
