@@ -50,16 +50,18 @@ export default function Spectrogram(props: SpectrogramProps) {
   const colormap = () => controlledColormap?.() ?? localColormap();
 
   createEffect(
-    () => controlledRunning?.(),
-    (nextRunning) => {
-      if (nextRunning !== undefined) spectrumSource.applyRunning(nextRunning);
-    },
-  );
-
-  createEffect(
-    () => controlledSpectrumSource?.(),
-    (nextSource) => {
-      if (nextSource !== undefined) spectrumSource.applySource(nextSource);
+    () => ({
+      running: controlledRunning?.(),
+      source: controlledSpectrumSource?.(),
+    }),
+    ({ running: nextRunning, source: nextSource }) => {
+      if (nextRunning !== undefined && nextSource !== undefined) {
+        spectrumSource.applyState(nextSource, nextRunning);
+      } else if (nextRunning !== undefined) {
+        spectrumSource.applyRunning(nextRunning);
+      } else if (nextSource !== undefined) {
+        spectrumSource.applySource(nextSource);
+      }
     },
   );
 
@@ -100,9 +102,6 @@ export default function Spectrogram(props: SpectrogramProps) {
   const handleStreamClick = () => spectrumSource.toggle(running());
 
   onSettled(() => {
-    const initialRunning = untrack(() => controlledRunning?.());
-    if (initialRunning !== undefined) spectrumSource.applyRunning(initialRunning);
-    else if (attentionLevel() === 1) spectrumSource.start("simulation");
     return spectrumSource.dispose;
   });
 

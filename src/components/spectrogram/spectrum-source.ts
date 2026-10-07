@@ -154,9 +154,27 @@ export function createSpectrumSource(options: SpectrumSourceOptions) {
 
   const applySource = (nextSource: AudioSource) => {
     untrack(() => {
-      if (nextSource === source()) return;
-      if (activeSource() || starting()) start(nextSource);
-      else setSource(nextSource);
+      if (activeSource() || starting()) {
+        if (activeSource() !== nextSource || source() !== nextSource) {
+          start(nextSource);
+        }
+      } else if (source() !== nextSource) {
+        setSource(nextSource);
+      }
+    });
+  };
+
+  const applyState = (nextSource: AudioSource, nextRunning: boolean) => {
+    untrack(() => {
+      if (!nextRunning) {
+        if (activeSource() || starting()) stop();
+        setSource(nextSource);
+      } else if (
+        activeSource() !== nextSource &&
+        !(starting() && source() === nextSource)
+      ) {
+        start(nextSource);
+      }
     });
   };
 
@@ -211,6 +229,7 @@ export function createSpectrumSource(options: SpectrumSourceOptions) {
     start,
     applyRunning,
     applySource,
+    applyState,
     toggle,
     getFrameData,
     dispose,

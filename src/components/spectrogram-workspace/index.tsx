@@ -110,22 +110,24 @@ export default function SpectrogramWorkspace() {
 
       <section class={styles.surface} aria-label="Detailed spectrum">
         <h2>{assetId()} · detailed spectrum</h2>
-        <Spectrogram
-          attentionLevel={3}
-          assetId={assetId()}
-          running={running}
-          colormap={colormap}
-          spectrumSource={spectrumSource}
-          onRunningChange={(nextRunning) =>
-            broadcastControls(nextRunning, colormap(), spectrumSource())
-          }
-          onColormapChange={(nextColormap) =>
-            broadcastControls(running(), nextColormap, spectrumSource())
-          }
-          onSpectrumSourceChange={(nextSpectrumSource) =>
-            broadcastControls(running(), colormap(), nextSpectrumSource)
-          }
-        />
+        <Show when={channel.ready()}>
+          <Spectrogram
+            attentionLevel={3}
+            assetId={assetId()}
+            running={running}
+            colormap={colormap}
+            spectrumSource={spectrumSource}
+            onRunningChange={(nextRunning) =>
+              broadcastControls(nextRunning, colormap(), spectrumSource())
+            }
+            onColormapChange={(nextColormap) =>
+              broadcastControls(running(), nextColormap, spectrumSource())
+            }
+            onSpectrumSourceChange={(nextSpectrumSource) =>
+              broadcastControls(running(), colormap(), nextSpectrumSource)
+            }
+          />
+        </Show>
       </section>
 
       <footer class={styles.footer}>
