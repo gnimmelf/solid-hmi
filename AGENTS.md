@@ -2,11 +2,11 @@
 
 This is a SolidJS 2.x project. Solid is not React: components run once (there is no re-render), reactivity is fine-grained through signals, and effects/memos have Solid-specific semantics. Do not port React patterns.
 
-## Versioned skills (in node_modules — read on demand)
+## Versioned skills
 
 The installed packages ship agent skills that match their exact installed versions:
 
-- `node_modules/solid-js/skills/reactivity-diagnostics/SKILL.md` — repair guide mapping every dev-mode diagnostic code (e.g. `REACTIVE_WRITE_IN_OWNED_SCOPE`, `STRICT_READ_UNTRACKED`) to its prescribed fix. Read it whenever a Solid diagnostic code appears in test output or the browser console.
+- `.github/skills/reactivity-diagnostics/SKILL.md` discovers and delegates to `node_modules/solid-js/skills/reactivity-diagnostics/SKILL.md`, the repair guide mapping every dev-mode diagnostic code (e.g. `REACTIVE_WRITE_IN_OWNED_SCOPE`, `STRICT_READ_UNTRACKED`) to its prescribed fix. Use it whenever a Solid diagnostic code appears in test output or the browser console.
 - `node_modules/@solidjs/diagnostics/skills/agent-loops/SKILL.md` — how to capture reactive evidence (which scopes re-ran and why, wasted recomputes, cost tables) and assert budgets, in tests and against live pages.
 
 ## Reactive diagnostics — capture evidence instead of guessing
