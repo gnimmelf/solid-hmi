@@ -8,12 +8,15 @@ export const ColormapNames = [
   "cool",
   "rainbow",
 ] as const;
-
 export type ColormapName = (typeof ColormapNames)[number];
+
+export const SpectrumSourceOptions = ['simulation', 'microphone'] as const
+export type SpectrumSourceOption = (typeof SpectrumSourceOptions)[number];
 
 export const SpectrogramControlsSchema = v.strictObject({
   running: v.boolean(),
   colormap: v.picklist(ColormapNames),
+  spectrumSource: v.picklist(SpectrumSourceOptions)
 });
 
 export const SpectrogramStateSchema = v.strictObject({
@@ -21,6 +24,7 @@ export const SpectrogramStateSchema = v.strictObject({
   running: v.boolean(),
   colormap: v.picklist(ColormapNames),
   theme: v.picklist(ThemeNames),
+  spectrumSource: v.picklist(SpectrumSourceOptions)
 });
 
 export const ThemeChangeSchema = v.strictObject({

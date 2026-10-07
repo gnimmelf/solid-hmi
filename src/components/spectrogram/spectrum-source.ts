@@ -152,6 +152,14 @@ export function createSpectrumSource(options: SpectrumSourceOptions) {
     });
   };
 
+  const applySource = (nextSource: AudioSource) => {
+    untrack(() => {
+      if (nextSource === source()) return;
+      if (activeSource() || starting()) start(nextSource);
+      else setSource(nextSource);
+    });
+  };
+
   const toggle = (effectiveRunning: boolean) => {
     if (effectiveRunning || starting()) stop(true);
     else start(source(), true);
@@ -202,6 +210,7 @@ export function createSpectrumSource(options: SpectrumSourceOptions) {
     setError,
     start,
     applyRunning,
+    applySource,
     toggle,
     getFrameData,
     dispose,

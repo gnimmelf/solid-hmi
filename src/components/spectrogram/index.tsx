@@ -8,7 +8,7 @@ import {
 } from "solid-js";
 import type { ObcDropdownButton } from "@oicl/openbridge-webcomponents/dist/components/dropdown-button/dropdown-button.js";
 import SpectrogramScene from "../spectrogram-scene";
-import { ColormapNames, type ColormapName } from "./channel";
+import { ColormapNames, SpectrumSourceOption, type ColormapName } from "./channel";
 import { createSpectrumSource } from "./spectrum-source.js";
 import "@oicl/openbridge-webcomponents/dist/components/card/card.js";
 import "@oicl/openbridge-webcomponents/dist/components/button/button.js";
@@ -24,16 +24,20 @@ type SpectrogramProps = {
   assetId: string;
   running?: Accessor<boolean>;
   colormap?: Accessor<ColormapName>;
+  spectrumSource?: Accessor<SpectrumSourceOption>;
   onRunningChange?: (running: boolean) => void;
   onColormapChange?: (colormap: ColormapName) => void;
+  onSpectrumSourceChange?: (spectrumSource: SpectrumSourceOption) => void
 };
 
 export default function Spectrogram(props: SpectrogramProps) {
   const attentionLevel = () => props.attentionLevel;
   const controlledRunning = untrack(() => props.running);
   const controlledColormap = untrack(() => props.colormap);
+  const controlledSpectrumSource = untrack(() => props.spectrumSource);
   const onRunningChange = untrack(() => props.onRunningChange);
   const onColormapChange = untrack(() => props.onColormapChange);
+  const onSpectrumSourceChange = untrack(() => props.onSpectrumSourceChange);
   const [colormapPicker, setColormapPicker] =
     createSignal<ObcDropdownButton>();
   const colormapOptions: ObcDropdownButton["options"] = ColormapNames.map(
@@ -53,6 +57,13 @@ export default function Spectrogram(props: SpectrogramProps) {
   );
 
   createEffect(
+    () => controlledSpectrumSource?.(),
+    (nextSource) => {
+      if (nextSource !== undefined) spectrumSource.applySource(nextSource);
+    },
+  );
+
+  createEffect(
     () => colormap(),
     (nextColormap) => {
       const picker = colormapPicker();
@@ -64,6 +75,7 @@ export default function Spectrogram(props: SpectrogramProps) {
     const selected = (event as CustomEvent<{ value: string }>).detail.value;
     if (selected === "simulation" || selected === "microphone") {
       spectrumSource.start(selected, true);
+      onSpectrumSourceChange?.(selected)
     }
   };
 
@@ -88,7 +100,8 @@ export default function Spectrogram(props: SpectrogramProps) {
   const handleStreamClick = () => spectrumSource.toggle(running());
 
   onSettled(() => {
-    if (controlledRunning) spectrumSource.applyRunning(controlledRunning());
+    const initialRunning = untrack(() => controlledRunning?.());
+    if (initialRunning !== undefined) spectrumSource.applyRunning(initialRunning);
     else if (attentionLevel() === 1) spectrumSource.start("simulation");
     return spectrumSource.dispose;
   });

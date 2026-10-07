@@ -12,6 +12,7 @@ import {
   SpectrogramChannelSchemas,
   SpectrogramStateSchema,
   type ColormapName,
+  type SpectrumSourceOption,
 } from "../spectrogram/channel";
 import styles from "./style.module.css";
 
@@ -22,6 +23,8 @@ export default function SpectrogramWorkspace() {
   );
   const [running, setRunning] = createSignal(false);
   const [colormap, setColormap] = createSignal<ColormapName>("viridis");
+  const [spectrumSource, setSpectrumSource] =
+    createSignal<SpectrumSourceOption>("simulation");
   const channel = new WindowChannelRegistry(
     "spectrogram_c2_demo",
     window.location.href,
@@ -36,6 +39,7 @@ export default function SpectrogramWorkspace() {
             running: running(),
             colormap: colormap(),
             theme: getTheme(),
+            spectrumSource: spectrumSource(),
           })),
         applySnapshot: (state) => {
           const snapshot = v.parse(SpectrogramStateSchema, state);
@@ -43,6 +47,7 @@ export default function SpectrogramWorkspace() {
           setRunning(snapshot.running);
           setColormap(snapshot.colormap);
           setTheme(snapshot.theme, false);
+          setSpectrumSource(snapshot.spectrumSource);
         },
       },
     },
@@ -53,6 +58,7 @@ export default function SpectrogramWorkspace() {
       if (message.type === "spectrogram-controls") {
         setRunning(message.data.running);
         setColormap(message.data.colormap);
+        setSpectrumSource(message.data.spectrumSource);
       } else if (message.type === "theme") {
         setTheme(message.data.theme, false);
       }
@@ -70,12 +76,18 @@ export default function SpectrogramWorkspace() {
     };
   });
 
-  const broadcastControls = (nextRunning: boolean, nextColormap: ColormapName) => {
+  const broadcastControls = (
+    nextRunning: boolean,
+    nextColormap: ColormapName,
+    nextSpectrumSource: SpectrumSourceOption,
+  ) => {
     setRunning(nextRunning);
     setColormap(nextColormap);
+    setSpectrumSource(nextSpectrumSource);
     void channel.broadcast("spectrogram-controls", {
       running: nextRunning,
       colormap: nextColormap,
+      spectrumSource: nextSpectrumSource,
     });
   };
 
@@ -103,11 +115,15 @@ export default function SpectrogramWorkspace() {
           assetId={assetId()}
           running={running}
           colormap={colormap}
+          spectrumSource={spectrumSource}
           onRunningChange={(nextRunning) =>
-            broadcastControls(nextRunning, colormap())
+            broadcastControls(nextRunning, colormap(), spectrumSource())
           }
           onColormapChange={(nextColormap) =>
-            broadcastControls(running(), nextColormap)
+            broadcastControls(running(), nextColormap, spectrumSource())
+          }
+          onSpectrumSourceChange={(nextSpectrumSource) =>
+            broadcastControls(running(), colormap(), nextSpectrumSource)
           }
         />
       </section>
