@@ -225,11 +225,34 @@ export class WindowChannelRegistry<
     }
   }
 
+  private getRightHalfWindowFeaturesStr() {
+    // 1. Get the available screen dimensions (excluding taskbars/docks)
+    const screenWidth = window.screen.availWidth;
+    const screenHeight = window.screen.availHeight;
+
+    // 2. Calculate the half-width and full available height
+    const targetWidth = screenWidth / 2;
+    const targetHeight = screenHeight;
+
+    // 3. Set the left position to the remaining half of the screen
+    const targetLeft = screenWidth / 2;
+    const targetTop = 0;
+
+    // 4. Compile the window features string
+    return `left=${targetLeft},top=${targetTop},width=${targetWidth},height=${targetHeight}`;
+  }
+
   openChild(url = window.location.href) {
     const childUrl = new URL(url);
     childUrl.searchParams.set(ROOT_ID_PARAM, this.rootId);
     childUrl.searchParams.set(WINDOW_ID_PARAM, crypto.randomUUID());
-    return window.open(childUrl, "_blank");
+
+    const windowFeatures = [
+      "popup",
+      this.getRightHalfWindowFeaturesStr()
+    ].join()
+
+    return window.open(childUrl, "_blank", windowFeatures);
   }
 
   broadcast<K extends keyof TSchemas & string>(
